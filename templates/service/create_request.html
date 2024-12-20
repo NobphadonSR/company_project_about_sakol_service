@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}แจ้งซ่อมใหม่{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="form-container">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">แจ้งซ่อมใหม่</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <!-- ส่วน checkbox need_advice คงไว้ตามเดิม -->
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input type="checkbox" 
+                                           name="need_advice" 
+                                           id="id_need_advice" 
+                                           class="form-check-input">
+                                    <label for="id_need_advice" class="form-check-label">
+                                        {{ form.need_advice.label }}
+                                    </label>
+                                </div>  
+                            </div>
+                    
+                            <!-- แก้ไข loop โดยเพิ่มเงื่อนไขข้าม field need_advice -->
+                            {% for field in form %}
+                                {% if field.name != 'need_advice' %}
+                                <div class="mb-4">
+                                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                    {% if field.field.widget.input_type == 'textarea' %}
+                                        <textarea name="{{ field.name }}" 
+                                                  id="{{ field.id_for_label }}" 
+                                                  class="form-control"
+                                                  rows="4">{{ field.value|default:'' }}</textarea>
+                                    {% elif field.name == 'request_type' %}
+                                        <select name="{{ field.name }}" 
+                                                id="{{ field.id_for_label }}" 
+                                                class="form-control">
+                                            {% for value, label in field.field.choices %}
+                                                <option value="{{ value }}" {% if field.value == value %}selected{% endif %}>
+                                                    {{ label }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    {% elif field.name == 'warranty_status' %}
+                                        <select name="{{ field.name }}" 
+                                                id="{{ field.id_for_label }}" 
+                                                class="form-control">
+                                            {% for choice in field.field.choices %}
+                                                <option value="{{ choice.0 }}" {% if field.value == choice.0 %}selected{% endif %}>
+                                                    {{ choice.1 }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    {% else %}
+                                        <input type="{{ field.field.widget.input_type }}" 
+                                               name="{{ field.name }}" 
+                                               id="{{ field.id_for_label }}" 
+                                               class="form-control"
+                                               value="{{ field.value|default:'' }}">
+                                    {% endif %}
+                                    
+                                    {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text }}</div>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                    <div class="alert alert-danger">
+                                        {{ field.errors }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-primary">บันทึก</button>
+                                <a href="{% url 'service:request_list' %}" class="btn btn-secondary">ยกเลิก</a>
+                            </div>
+                        </form>
+                    </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        border: none;
+        box-shadow: 0 0 20px rgba(0,0,0,0.08);
+        border-radius: 12px;
+    }
+
+    .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+        padding: 20px 24px;
+    }
+
+    .card-body {
+        padding: 24px;
+    }
+
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #344767;
+    }
+
+    .form-control {
+        border: 1px solid #e9ecef;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        border-color: #084298;
+        box-shadow: 0 0 0 0.2rem rgba(8,66,152,0.1);
+    }
+
+    select.form-control {
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1em;
+        padding-right: 40px;
+    }
+
+    textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .form-text {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+
+    .alert-danger {
+        background-color: #fff;
+        border: 1px solid #dc3545;
+        border-radius: 8px;
+        color: #dc3545;
+        font-size: 0.9rem;
+        padding: 8px 12px;
+        margin-top: 4px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background-color: #084298;
+        border-color: #084298;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background-color: #ffffff;
+        color: #084298;
+        border-color: #084298;
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: #ffffff;
+    }
+
+    .btn-secondary:hover {
+        background-color: #ffffff;
+        border-color: #6c757d;
+        color: #6c757d;
+        transform: translateY(-1px);
+    }
+
+    .d-grid {
+        gap: 12px;
+    }
+
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .form-check {
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('id_need_advice').addEventListener('change', function() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (this.checked) {
+        submitBtn.textContent = 'ขอคำแนะนำจากช่าง';
+    } else {
+        submitBtn.textContent = 'บันทึก';
+    }
+});
+</script>
+{% endblock %}

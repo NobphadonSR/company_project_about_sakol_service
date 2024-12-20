@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}เข้าสู่ระบบ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-primary {
+        background-color: #084298;
+        border-color: #084298;
+        color: #fff; 
+    }
+    .btn-primary:hover {
+        color: #084298;
+        border-color: #084298;
+        background-color: #ffffff;
+    }
+    a {
+        color: #084298;
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">เข้าสู่ระบบ</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">ชื่อผู้ใช้</label>
+                        <input type="text" name="username" class="form-control" id="id_username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label">รหัสผ่าน</label>
+                        <input type="password" name="password" class="form-control" id="id_password" required>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">เข้าสู่ระบบ</button>
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <div class="text-center">
+                    <p>ยังไม่มีบัญชีผู้ใช้? <a href="{% url 'accounts:register' %}">ลงทะเบียน</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

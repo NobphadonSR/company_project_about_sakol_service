@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}ให้คำแนะนำการซ่อม{% endblock %}
+
+{% block content %}
+<!-- ตรวจสอบสิทธิ์ก่อนแสดงเนื้อหา -->
+{% if user.user_type == 'technician' %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">ให้คำแนะนำการซ่อม</h5>
+    </div>
+    <div class="card-body">
+        <!-- ข้อมูลลูกค้าและรายละเอียดการแจ้ง -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h6>ข้อมูลลูกค้า</h6>
+                <p><strong>ชื่อลูกค้า:</strong> {{ customer.customer_name }}</p>
+                <p><strong>โครงการ:</strong> {{ customer.project_name }}</p>
+                <p><strong>ที่อยู่:</strong> {{ customer.location }}</p>
+                <p><strong>สถานะประกัน:</strong> 
+                    {% if service_request.warranty_status == 'in_warranty' %}
+                        <span class="badge bg-success">อยู่ในประกัน</span>
+                    {% else %}
+                        <span class="badge bg-danger">ไม่อยู่ในประกัน</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h6>รายละเอียดการแจ้ง</h6>
+                <p><strong>อาการที่แจ้ง:</strong> {{ service_request.description }}</p>
+                <p><strong>วันที่แจ้ง:</strong> {{ service_request.created_at|date:"d/m/Y" }}</p>
+            </div>
+        </div>
+
+        <!-- ฟอร์มให้คำแนะนำ -->
+        <form method="post" id="recommendationForm">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">ประเภทการซ่อม</label>
+                <select name="service_type" class="form-select" required>
+                    <option value="">เลือกประเภทการซ่อม</option>
+                    <option value="normal">ระบบไฟปกติ</option>
+                    <option value="full_checkup">ระบบ Full Check Up</option>
+                    <option value="air_flow">ระบบ Air flow/Air Plus</option>
+                    <option value="checkup_air_plus">ระบบ Check up Program Air plus</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">รายละเอียดการให้คำแนะนำ</label>
+                <textarea name="description" class="form-control" rows="4" required></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">ประมาณการค่าใช้จ่าย (บาท)</label>
+                <input type="number" name="estimated_cost" class="form-control" required 
+                       {% if service_request.warranty_status == 'in_warranty' %}value="0" readonly{% endif %}>
+                {% if service_request.warranty_status == 'in_warranty' %}
+                <small class="text-muted">* งานอยู่ในประกัน ไม่มีค่าใช้จ่าย</small>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">ส่งคำแนะนำ</button>
+                <a href="{% url 'service:request_detail' service_request.id %}" class="btn btn-secondary">ย้อนกลับ</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- เพิ่ม JavaScript สำหรับส่งฟอร์ม -->
+{% block extra_js %}
+<script>
+document.getElementById('recommendationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch("{% url 'service:submit_recommendation' service_request.id %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('ส่งคำแนะนำสำเร็จ');
+            window.location.href = "{% url 'service:request_detail' service_request.id %}";
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาดในการส่งคำแนะนำ');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาดในการส่งคำแนะนำ');
+    });
+});
+</script>
+{% endblock %}
+{% else %}
+<div class="alert alert-danger">
+    ไม่มีสิทธิ์เข้าถึงหน้านี้
+</div>
+{% endif %}
+{% endblock %}

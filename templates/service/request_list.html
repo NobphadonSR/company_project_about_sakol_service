@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}รายการแจ้งซ่อม{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-primary {
+        color: #fff;
+        background-color: #084298;
+        border-color: #084298;
+    }
+    .btn-primary:hover {
+        background-color: #ffffff;
+        border-color: #084298;
+        color: #084298;
+    }
+    .btn-info {
+        color: #fff;
+        background-color: #084298;
+        border-color: #084298;
+    }
+    .btn-info:hover {
+        color: #084298;
+        background-color: #ffffff;
+        border-color: #084298;
+    }
+    .bg-purple {
+        background-color: #6f42c1;
+    }
+    .bg-orange {
+        background-color: #fd7e14;
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title">รายการแจ้งซ่อม</h3>
+        <a href="{% url 'service:create_request' %}" class="btn btn-primary">แจ้งปัญหาใหม่</a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>เลขที่คำขอ</th>
+                        <th>วันที่แจ้ง</th>
+                        <th>วันที่นัดหมาย</th>
+                        <th>เวลานัดหมาย</th>
+                        <th>เรื่องที่แจ้ง</th>
+                        <th>ประเภท</th>
+                        <th>สถานะ</th>
+                        <th>สถานะประกัน</th>
+                        <th>การดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request in requests %}
+                    <tr>
+                        <td>{{ request.id }}</td>
+                        <td>{{ request.created_at|date:"d/m/Y" }}</td>
+                        <td>{{ request.appointment_date|date:"d/m/Y" }}</td>
+                        <td>{{ request.appointment_time }}</td>
+                        <td>{{ request.description }}</td>
+                        <td>{{ request.get_request_type_display }}</td>
+                        <!-- แก้ไขส่วนแสดงสถานะ -->
+                        <td>
+                            <span class="badge {% if request.status == 'pending' %}bg-warning
+                                            {% elif request.status == 'confirmed' %}bg-info
+                                            {% elif request.status == 'assigned' %}bg-primary
+                                            {% elif request.status == 'accepted' %}bg-info
+                                            {% elif request.status == 'traveling' %}bg-primary
+                                            {% elif request.status == 'arrived' %}bg-purple
+                                            {% elif request.status == 'fixing' %}bg-orange
+                                            {% elif request.status == 'completed_cash' %}bg-success
+                                            {% elif request.status == 'completed_call' %}bg-success
+                                            {% elif request.status == 'cancelled' %}bg-danger
+                                            {% elif request.status == 'rescheduled' %}bg-warning
+                                            {% endif %}">
+                                {{ request.get_status_display }}
+                            </span>
+                        </td>
+                        <!-- เพิ่มในตารางหรือการ์ดแสดงรายการ -->
+                        <td>
+                            {% if request.warranty_status == 'in_warranty' %}
+                                <span class="badge bg-success">อยู่ในประกัน</span>
+                            {% elif request.warranty_status == 'out_of_warranty' %}
+                                <span class="badge bg-danger">ไม่อยู่ในประกัน</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'service:request_detail' request.id %}" class="btn btn-info btn-sm">ดูรายละเอียด</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">ไม่พบรายการแจ้งซ่อม</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

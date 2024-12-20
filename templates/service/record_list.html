@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+
+{% block title %}รายการบันทึกการบริการ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .btn-primary {
+        background-color: #084298;
+        border-color: #084298;
+    }
+    .btn-primary:hover {
+        background-color: #ffffff;
+        color: #084298;
+    }
+    .btn-danger {
+        background-color: #c62334;
+        border-color: #c62334;
+    }
+    .btn-danger:hover {
+        background-color: #ffffff;
+        color: #c62334;
+    }
+    .btn-success {
+        color: #ffffff;
+        background-color: #317d5a;
+        border-color: #317d5a;
+    }
+    .btn-success:hover {
+        background-color: #ffffff;
+        color: #317d5a;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">รายการบันทึกการบริการ</h5>
+            <div>
+                <a href="{% url 'service:create_record' %}" class="btn btn-primary"><i class="fa-solid fa-plus"></i> เพิ่มบันทึกใหม่</a>
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
+                    <i class="fas fa-file-excel"></i> นำเข้าข้อมูล Excel
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- ฟิลเตอร์การค้นหา -->
+        <form method="get" class="mb-4">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" name="search" class="form-control" placeholder="ค้นหา...">
+                </div>
+                <div class="col-md-2">
+                    <select name="status" 
+                            class="form-select"
+                            title="กรองตามสถานะ"
+                            aria-label="กรองตามสถานะ">
+                        <option value="">- สถานะทั้งหมด -</option>
+                        <option value="completed">จบงาน</option>
+                        <option value="pending">รอดำเนินการ</option>
+                        <option value="in_progress">กำลังดำเนินการ</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary">ค้นหา</button>
+                </div>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>เลขงาน</th>
+                        <th>วันที่</th>
+                        <th>ลูกค้า</th>
+                        <th>โครงการ</th>
+                        <th>สถานะ</th>
+                        <th>การดำเนินการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in object_list %}
+                    <tr>
+                        <td>{{ record.job_number }}</td>
+                        <td>{{ record.date|date:"d/m/Y" }}</td>
+                        <td>{{ record.customer.customer_name }}</td>
+                        <td>{{ record.customer.project_name }}</td>
+                        <td>{{ record.get_completion_status_display }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'service:edit_record' record.id %}" 
+                                   class="btn btn-sm btn-primary"
+                                   title="แก้ไขบันทึก"
+                                   aria-label="แก้ไขบันทึก"><i class="fas fa-edit"></i> แก้ไข</a>
+                                <button type="button"
+                                        class="btn btn-sm btn-danger"
+                                        onclick="confirmDelete( '{% url 'service:delete_record' record.id %}' )"
+                                        title="ลบบันทึก"
+                                        aria-label="ลบบันทึก"><i class="fas fa-trash"></i> ลบ</button>
+                                <a href="{% url 'service:generate_bill' record.id %}" 
+                                   class="btn btn-sm btn-success"
+                                   title="ออกใบเสร็จ"
+                                   aria-label="ออกใบเสร็จ"><i class="fa-solid fa-wallet"></i> ออกใบเสร็จ</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">ไม่พบข้อมูล</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- การแบ่งหน้า -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">ก่อนหน้า</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">ถัดไป</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal สำหรับอัพโหลด Excel -->
+<div class="modal fade" id="uploadExcelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล Excel</h5>
+                <button type="button" 
+                        class="btn-close" 
+                        data-bs-dismiss="modal" 
+                        title="ปิด"
+                        aria-label="ปิด"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadExcelForm" method="post" enctype="multipart/form-data" 
+                      action=" ">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="excel_file" class="form-label">เลือกไฟล์ Excel</label>
+                        <input type="file" 
+                               id="excel_file" 
+                               name="excel_file" 
+                               class="form-control" 
+                               accept=".xlsx,.xls"
+                               title="เลือกไฟล์ Excel">
+                    </div>
+                    <button type="submit" class="btn btn-primary">อัพโหลด</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(url) {
+    if (confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
+        window.location.href = url;
+    }
+}
+
+document.getElementById('uploadExcelForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('อัพโหลดข้อมูลสำเร็จ');
+            location.reload();
+        } else {
+            alert('เกิดข้อผิดพลาดในการอัพโหลด');
+        }
+    });
+});
+</script>
+{% endblock %}

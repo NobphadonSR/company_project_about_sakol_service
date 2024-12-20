@@ -1,0 +1,931 @@
+{% extends 'base.html' %}
+
+{% block title %}รายละเอียดการแจ้งซ่อม{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <!-- ส่วนแสดงรายละเอียดการแจ้งซ่อม -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">รายละเอียดการแจ้งซ่อม</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>ประเภทการบริการ:</strong></div>
+                    <div class="col-md-8">{{ request.get_request_type_display }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>รายละเอียด:</strong></div>
+                    <div class="col-md-8">{{ request.description }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>สถานะ:</strong></div>
+                    <div class="col-md-8">{{ request.get_status_display }}</div>
+                </div>
+                {% if request.appointment_date %}
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>วันที่นัดหมาย:</strong></div>
+                    <div class="col-md-8">{{ request.appointment_date }}</div>
+                </div>
+                {% endif %}
+                {% if request.appointment_time %}
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>เวลานัดหมาย:</strong></div>
+                    <div class="col-md-8">{{ request.appointment_time }}</div>
+                </div>
+                {% endif %}
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>วันที่แจ้ง:</strong></div>
+                    <div class="col-md-8">{{ request.created_at|date:"d/m/Y H:i" }}</div>
+                </div>
+                <!-- เพิ่มในส่วนแสดงรายละเอียด -->
+                <div class="mb-3">
+                    <div class="col-md-4"><strong>สถานะประกัน:</strong></div>
+                    <div class="col-md-8">
+                    {% if request.warranty_status == 'in_warranty' %}
+                        <span class="badge bg-success">อยู่ในประกัน</span>
+                    {% elif request.warranty_status == 'out_of_warranty' %}
+                        <span class="badge bg-danger">ไม่อยู่ในประกัน</span>
+                    {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- เพิ่มส่วนแสดงข้อมูลประกัน -->
+        {% if request.request_type in 'install,all_in' %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>ข้อมูลประกัน
+                </h5>
+                <span class="badge {% if request.warranty_status == 'in_warranty' %}bg-success{% else %}bg-warning{% endif %}">
+                    {{ request.get_warranty_status_display }}
+                </span>
+            </div>
+            <div class="card-body">
+                {% if request.warranty_status == 'in_warranty' %}
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>วันที่เริ่มประกัน:</strong></div>
+                        <div class="col-md-8">{{ request.warranty_start_date|date:"d/m/Y" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>วันที่สิ้นสุดประกัน:</strong></div>
+                        <div class="col-md-8">{{ request.warranty_end_date|date:"d/m/Y" }}</div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        ประกันคุ้มครองอะไหล่และการติดตั้งเป็นระยะเวลา 1 ปี
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ไม่อยู่ในระยะประกัน หรือประกันหมดอายุแล้ว
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- เพิ่มส่วนใหม่ตรงนี้: การมอบหมายงานสำหรับฝ่ายบริการ -->
+        {% if user.user_type == 'service' and request.status == 'pending' %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">มอบหมายงานให้ช่าง</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'service:assign_technician' request.id %}">
+                    {% csrf_token %}
+                    <div class="row align-items-end">
+                        <div class="col-md-8">
+                            <label for="technician" class="form-label">เลือกช่างเทคนิค</label>
+                            <select name="technician" id="technician" class="form-select" required>
+                                <option value="">เลือกช่างเทคนิค</option>
+                                {% for tech in available_technicians %}
+                                <option value="{{ tech.id }}">{{ tech.customer.customer_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-check-circle me-2"></i>ยืนยันการแจ้งซ่อมและมอบหมายงาน
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- เพิ่มส่วนใหม่ตรงนี้: การตอบรับงานสำหรับช่าง -->
+        {% if user.user_type == 'technician' and request.technician == user and request.status == 'assigned' %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">ตอบรับงาน</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'service:accept_request' request.id %}">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check me-2"></i>ยืนยันและให้คำแนะนำ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- เพิ่มส่วนใหม่ตรงนี้: การยืนยันคำแนะนำสำหรับลูกค้า -->
+        {% if user == request.customer and request.status == 'advice_given' %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">ยืนยันคำแนะนำ</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'service:confirm_advice' request.id %}">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-thumbs-up me-2"></i>ยืนยันคำแนะนำและดำเนินการต่อ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ส่วนสำหรับช่างอัพเดทสถานะ -->
+        {% if user.user_type == 'technician' and request.technician == user %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">การดำเนินการ</h5>
+            </div>
+            <div class="card-body">
+                <!-- เพิ่มปุ่มให้คำแนะนำตรงนี้ -->
+                <a href="{% url 'service:submit_recommendation' request.id %}" 
+                    class="btn btn-primary mb-3">
+                    <i class="fas fa-comment-medical"></i> ให้คำแนะนำการซ่อม
+                </a>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+
+                    <button type="button" class="btn btn-primary" onclick="updateServiceStatus( '{{ request.id }}' , 'accepted')"
+                            {% if request.status != 'assigned' or not request.is_confirmed %}disabled{% endif %}>
+                        รับงาน
+                    </button>
+                    
+                    <button type="button" class="btn btn-info" onclick="updateServiceStatus( '{{ request.id }}' , 'traveling')"
+                            {% if request.status != 'accepted' %}disabled{% endif %}>
+                        เริ่มเดินทาง
+                    </button>
+                    
+                    <button type="button" class="btn btn-info" onclick="updateServiceStatus( '{{ request.id }}' , 'arrived')"
+                            {% if request.status != 'traveling' %}disabled{% endif %}>
+                        ถึงจุดหมาย
+                    </button>
+                    
+                    <button type="button" class="btn btn-warning" onclick="updateServiceStatus( '{{ request.id }}' , 'fixing')"
+                            {% if request.status != 'arrived' %}disabled{% endif %}>
+                        เริ่มซ่อม
+                    </button>
+                </div>
+
+                <div class="completion-section" {% if request.status != 'fixing' %}style="display: none;"{% endif %}>
+                    <h6 class="mb-3">จบงาน</h6>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success" onclick="updateServiceStatus( '{{ request.id }}' , 'completed_cash')">
+                            เก็บเงินหน้างาน
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="updateServiceStatus( '{{ request.id }}' , 'completed_call')">
+                            โทรเก็บเงิน
+                        </button>
+                    </div>
+                </div>
+
+                <!-- แก้ไขส่วนอัพโหลดรูปภาพ -->
+                <div class="upload-section mt-4">
+                    <form id="updateStatusForm" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="{{ request.status }}">
+                        
+                        <div class="form-group mb-3">
+                            <label for="service-images">รูปภาพ:</label>
+                            <input type="file" id="service-images" name="photos" multiple 
+                                class="form-control" accept="image/*">
+                            <small class="text-muted">* อัพโหลดได้สูงสุด 6 รูป</small>
+                        </div>  
+
+                        <div class="form-group mb-3">
+                            <label for="image-description">คำอธิบายรูปภาพ:</label>
+                            <textarea id="image-description" name="image_description" 
+                              class="form-control" rows="2"></textarea>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="status-notes">หมายเหตุ:</label>
+                            <textarea id="status-notes" name="notes" 
+                                      class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <button type="button" class="btn btn-primary" onclick="uploadImages('{{ request.id }}')">
+                            <i class="fas fa-upload"></i> อัพโหลดรูปภาพ
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- เพิ่มส่วนนี้สำหรับลูกค้าจัดการนัดหมาย -->
+        {% if user.user_type == 'customer' and request.customer == user.customer %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">จัดการนัดหมาย</h5>
+            </div>
+            <div class="card-body">
+                <!-- ปุ่มสำหรับยกเลิกและเลื่อนนัด -->
+                <div class="d-flex gap-2 mb-3">
+                    <button type="button" class="btn btn-danger" onclick="cancelRequest('{{ request.id }}')"
+                    {% if request.status in 'completed_cash,completed_call,cancelled' %}disabled{% endif %}>
+                ยกเลิกนัด
+            </button>
+            
+            <button type="button" class="btn btn-warning" onclick="showRescheduleForm()"
+                    {% if request.status in 'completed_cash,completed_call,cancelled' %}disabled{% endif %}>
+                        เลื่อนนัด
+                    </button>
+                </div>
+
+        <!-- ฟอร์มสำหรับเลื่อนนัด -->
+        <div id="reschedule-form" class="mt-3" style="display: none;">
+            <h6 class="mb-3">เลือกวันและเวลานัดใหม่</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <input type="date" class="form-control" id="new-date" required>
+                    <small class="text-muted">เลือกวันที่ในอนาคต</small>
+                </div>
+                <div class="col-md-6">
+                    <input type="time" class="form-control" id="new-time" required>
+                    <small class="text-muted">เวลาทำการ 8:00 - 17:00</small>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary mt-3" onclick="rescheduleAppointment('{{ request.id }}')">
+                ยืนยันการเลื่อนนัด
+                </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ส่วนแสดงประวัติการดำเนินการ -->
+        {% if job_statuses %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">ประวัติการดำเนินการ</h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% for status in job_statuses %}
+                    <div class="timeline-item">
+                        <div class="timeline-date">{{ status.created_at|date:"d/m/Y H:i" }}</div>
+                        <div class="timeline-content">
+                            <h6>{{ status.get_status_display }}</h6>
+                            {% if status.technician %}
+                            <p>ช่างเทคนิค: {{ status.technician.customer.customer_name }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ส่วนแสดงรูปภาพประกอบ -->
+        {% if service_images %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">รูปภาพประกอบ</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for image in service_images %}
+                    <div class="col-md-4 mb-3">
+                        <div class="service-image">
+                            <div class="image-container" onclick="showImage('{{ image.image.url }}', '{{ image.description }}', '{{ image.uploaded_at|date:"d/m/Y H:i" }}')">
+                                <img src="{{ image.image.url }}" alt="{{ image.description }}" class="img-fluid rounded">
+                                <div class="image-overlay">
+                                    <i class="fas fa-search-plus"></i>
+                                </div>
+                            </div>
+                            {% if image.description %}
+                            <p class="mt-2 mb-1">{{ image.description }}</p>
+                            {% endif %}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">อัพโหลดเมื่อ: {{ image.uploaded_at|date:"d/m/Y H:i" }}</small>
+                                {% if user.user_type == 'technician' or user.user_type == 'service' %}
+                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteImage('{{ image.id }}')" title="ลบรูปภาพ">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ส่วนสำหรับช่างให้คำแนะนำ -->
+        {% if user.user_type == 'technician' and request.need_advice and not request.technician_advice %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">ให้คำแนะนำ</h5>
+            </div>
+            <div class="card-body">
+                <form id="adviceForm">
+                    <div class="mb-3">
+                        <label for="advice" class="form-label">คำแนะนำ</label>
+                        <textarea id="advice" class="form-control" rows="4" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="estimated_cost" class="form-label">ประมาณการค่าใช้จ่าย (บาท)</label>
+                        <input type="number" id="estimated_cost" class="form-control" required>
+                    </div>
+                    <button type="button" onclick="submitAdvice('{{ request.id }}')" 
+                            class="btn btn-primary">ส่งคำแนะนำ</button>
+                </form>
+            </div>
+        </div>
+
+        <script>
+        function submitAdvice(requestId) {
+            const advice = document.getElementById('advice').value;
+            const estimatedCost = document.getElementById('estimated_cost').value;
+            
+            if (!advice || !estimatedCost) {
+                alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('advice', advice);
+            formData.append('estimated_cost', estimatedCost);
+            
+            fetch(`/service/request/${requestId}/advice/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('ส่งคำแนะนำเรียบร้อยแล้ว');
+                    location.reload();
+                } else {
+                    alert(data.message || 'เกิดข้อผิดพลาด');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+            });
+        }
+        </script>
+        {% endif %}
+
+        <!-- 1. เพิ่มส่วนแสดงคำแนะนำจากช่างและการยืนยัน -->
+{% if request.need_advice %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">คำแนะนำจากช่าง</h5>
+    </div>
+    <div class="card-body">
+        {% if request.technician_advice %}
+            <div class="mb-3">
+                <strong>คำแนะนำ:</strong>
+                <p>{{ request.technician_advice }}</p>
+            </div>
+            {% if request.estimated_cost %}
+            <div class="mb-3">
+                <strong>ประมาณการค่าใช้จ่าย:</strong>
+                <p>{{ request.estimated_cost|floatformat:2 }} บาท</p>
+            </div>
+            {% endif %}
+            
+            <!-- ส่วนปุ่มยืนยันสำหรับลูกค้า -->
+            {% if user.user_type == 'customer' and not request.customer_confirmed %}
+            <div class="d-grid gap-2">
+                <button onclick="confirmCustomerRequest('{{ request.id }}', true)" 
+                        class="btn btn-success">ยืนยันดำเนินการ</button>
+                <button onclick="confirmCustomerRequest('{{ request.id }}', false)" 
+                        class="btn btn-danger">ปฏิเสธ</button>
+            </div>
+            {% endif %}
+            {% else %}
+                <p class="text-muted">รอคำแนะนำจากช่าง</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 2. เพิ่มส่วนยืนยันสำหรับฝ่ายบริการ -->
+    {% if user.user_type == 'service' and not request.is_confirmed %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">การยืนยัน</h5>
+        </div>
+        <div class="card-body">
+            <button type="button" class="btn btn-primary" onclick="confirmServiceRequest('{{ request.id }}')"
+                    title="ยืนยันการแจ้งซ่อม">
+                ยืนยันการแจ้งซ่อม
+            </button>
+        </div>
+    </div>
+    {% endif %}
+    </div>
+</div>
+<!-- เพิ่ม Modal สำหรับดูรูปภาพ -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">รูปภาพประกอบ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <img id="modalImage" src="" class="img-fluid" alt="รูปภาพประกอบ">
+                <p id="modalDescription" class="mt-2"></p>
+                <small id="modalDate" class="text-muted"></small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* สไตล์สำหรับ timeline */
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 50px;
+    margin-bottom: 20px;
+}
+
+.timeline-item:before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: -20px;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item:last-child:before {
+    bottom: 0;
+}
+
+.timeline-date {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+/* สไตล์สำหรับข้อเสนอ */
+.proposal-item {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 15px;
+}
+
+.proposal-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* สไตล์สำหรับรูปภาพ */
+.service-image {
+    background: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.service-image img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.service-image p {
+    font-size: 0.9rem;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.service-image small {
+    display: block;
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+/* สไตล์สำหรับการจัดระยะห่าง */
+.gap-2 {
+    gap: 0.5rem !important;
+}
+    
+.completion-section {
+    border-top: 1px solid #dee2e6;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+/* เพิ่ม CSS สำหรับส่วนอัพโหลด */
+.upload-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+.upload-section .form-group {
+    margin-bottom: 1rem;
+}
+
+.upload-section label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.upload-section small {
+    color: #6c757d;
+    display: block;
+    margin-top: 0.25rem;
+}
+/* เพิ่มสไตล์ปุ่ม */
+
+.btn-info {
+    color: #000000;
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+}
+.btn-info:hover {
+    color: #0dcaf0;
+    background-color: #ffffff;
+    border-color: #0dcaf0;
+}
+.btn-primary {
+    color: #fff;
+    background-color: #084298;
+    border-color: #084298;
+}
+.btn-primary:hover {
+    color: #084298;
+    background-color: #ffffff;
+    border-color: #084298;
+}   
+
+/* เพิ่ม CSS สำหรับรูปภาพ */
+.image-container {
+    position: relative;
+    cursor: pointer;
+}
+
+.image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.image-overlay i {
+    color: white;
+    font-size: 2rem;
+}
+
+.image-container:hover .image-overlay {
+    opacity: 1;
+}
+
+/* ปรับแต่ง Modal */
+#imageModal .modal-body {
+    padding: 0;
+}
+
+#imageModal .modal-body img {
+    width: 100%;
+    height: auto;
+}
+
+#modalDescription {
+    padding: 1rem;
+    margin: 0;
+}
+
+#modalDate {
+    display: block;
+    padding: 0 1rem 1rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+// ฟังก์ชันสำหรับดึง CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// สำหรับฝ่ายบริการ
+function confirmServiceRequest(requestId) {
+    if (!confirm('ยืนยันการแจ้งซ่อม?')) {
+        return;
+    }
+    
+    fetch(`/service/request/${requestId}/confirm/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาด');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    });
+}
+
+// ฟังก์ชันสำหรับช่างอัพเดทสถานะ
+function updateServiceStatus(serviceId, status) {
+    if (!confirm('ยืนยันการอัพเดทสถานะ?')) return;
+
+    const formData = new FormData();
+    formData.append('status', status);
+    
+    fetch(`/service/request/${serviceId}/update-status/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('อัพเดทสถานะเรียบร้อย');
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    });
+}
+
+// แก้ไขฟังก์ชันสำหรับอัพโหลดรูปภาพ
+function uploadImages(serviceId) {
+    const form = document.getElementById('updateStatusForm');
+    const input = document.getElementById('service-images');
+    if (!input.files.length) {
+        alert('กรุณาเลือกรูปภาพ');
+        return;
+    }
+
+    const formData = new FormData(form);
+    for (let i = 0; i < input.files.length; i++) {
+        formData.append('photos', input.files[i]);
+    }
+
+    // เพิ่มสถานะปัจจุบัน
+    formData.append('status', document.querySelector('input[name="status"]').value);
+
+    fetch(`/service/request/${serviceId}/update-status/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('อัพโหลดรูปภาพเรียบร้อย');
+            location.reload();
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาดในการอัพโหลด');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาดในการอัพโหลด');
+    });
+}
+
+// เพิ่มฟังก์ชันใหม่สำหรับลูกค้ายกเลิกนัด
+function cancelRequest(serviceId) {
+    if (!confirm('ยืนยันการยกเลิกนัด?')) return;
+
+    const formData = new FormData();
+    formData.append('status', 'cancelled');
+    formData.append('action', 'cancel');
+
+    fetch(`/service/request/${serviceId}/update-status/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('ยกเลิกนัดเรียบร้อย');
+            location.reload();
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาด');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    });
+}
+
+// เพิ่มฟังก์ชันใหม่สำหรับแสดงฟอร์มเลื่อนนัด
+function showRescheduleForm() {
+    const form = document.getElementById('reschedule-form');
+    if (form.style.display === 'none' || !form.style.display) {
+        form.style.display = 'block';
+        
+        // ตั้งค่าวันที่ขั้นต่ำเป็นวันนี้
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('new-date').min = today;
+        
+        // ตั้งค่าเวลาทำงาน (8:00 - 17:00)
+        document.getElementById('new-time').min = '08:00';
+        document.getElementById('new-time').max = '17:00';
+    } else {
+        form.style.display = 'none';
+    }
+}
+
+// เพิ่มฟังก์ชันใหม่สำหรับลูกค้าเลื่อนนัด
+function rescheduleAppointment(serviceId) {
+    const newDate = document.getElementById('new-date').value;
+    const newTime = document.getElementById('new-time').value;
+
+    if (!newDate || !newTime) {
+        alert('กรุณาเลือกวันและเวลานัดใหม่');
+        return;
+    }
+
+    // ตรวจสอบว่าวันที่เลือกไม่ใช่วันที่ผ่านมาแล้ว
+    const selectedDate = new Date(newDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+        alert('กรุณาเลือกวันที่ในอนาคต');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('status', 'rescheduled');
+    formData.append('action', 'reschedule');
+    formData.append('new_appointment_date', newDate);
+    formData.append('new_appointment_time', newTime);
+
+    fetch(`/service/request/${serviceId}/update-status/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('เลื่อนนัดเรียบร้อย');
+            location.reload();
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาด');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    });
+}
+// เพิ่มฟังก์ชันสำหรับแสดงรูปภาพใน Modal
+function showImage(url, description, date) {
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    document.getElementById('modalImage').src = url;
+    document.getElementById('modalDescription').textContent = description || '';
+    document.getElementById('modalDate').textContent = `อัพโหลดเมื่อ: ${date}`;
+    modal.show();
+}
+
+// เพิ่มฟังก์ชันสำหรับลบรูปภาพ
+function deleteImage(imageId) {
+    if (!confirm('ยืนยันการลบรูปภาพ?')) return;
+
+    fetch(`/service/image/${imageId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('ลบรูปภาพเรียบร้อย');
+            location.reload();
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาดในการลบรูปภาพ');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาดในการลบรูปภาพ');
+    });
+}
+// สำหรับลูกค้า
+function confirmCustomerRequest(requestId, isConfirmed) {
+    const action = isConfirmed ? 'confirm' : 'reject';
+    const confirmMessage = isConfirmed ? 'ยืนยันการดำเนินการ?' : 'ยืนยันการปฏิเสธ?';
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', action);
+    
+    fetch(`/service/request/${requestId}/customer-confirm/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาด');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    });
+}
+</script>
+{% endblock %}
