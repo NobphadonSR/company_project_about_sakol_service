@@ -6,7 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="description" content="ระบบจัดการงานซ่อมบำรุง SAKOL SERVICE">
         <meta name="theme-color" content="#084298">
-        <title>{% block title %}SAKOL SERVICE{% endblock %}</title>
+        <title>{% block title %}Sakol Service{% endblock %}</title>
         {% csrf_token %}
         
         <!-- Favicon -->
@@ -95,6 +95,10 @@
                 transform: translateY(-2px);
             }
 
+            .dropdown-toggle::after {
+                display: contents;
+            }
+            
             .sticky-top {
                 position: static;
                 z-index: 1020;
@@ -359,16 +363,17 @@
                 <!-- เมนูหลัก -->
                 <ul class="navbar-nav me-auto">
                     {% if user.user_type == 'customer' %}
+                    <li class="nav-item"></li>
+                        <a class="nav-link d-flex align-items-center" href="{% url 'service:request_list' %}">
+                            <!--<i class="fa-solid fa-list me-2"></i>-->
+                            <span>รายการแจ้งซ่อม</span>
+                        </a>
+                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center" href="{% url 'service:create_request' %}">
                             <!--<i class="fa-solid fa-screwdriver-wrench me-2"></i>-->
                             <span>แจ้งซ่อม</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center" href="{% url 'service:request_list' %}">
-                            <!--<i class="fas fa-solid fa-table-list me-2"></i>-->
-                            <span>รายการแจ้งซ่อม</span>
                         </a>
                     </li>
                     
@@ -437,9 +442,9 @@
                 <!-- เมนูผู้ใช้ -->
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown d-none d-lg-block">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" >
                             <i class="fa-solid fa-user fa-xl"></i>
-                            <!--<span>{{ user.username }}</span>-->
+                            <!--<span>{{ user.username }}</span> -->
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li>
