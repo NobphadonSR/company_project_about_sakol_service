@@ -44,6 +44,22 @@
         border-radius: 0.5rem;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     }
+    /* เพิ่ม hover effect สำหรับแถวในตาราง */
+    .table tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        transition: background-color 0.2s ease;
+    }
+
+    /* ปรับแต่งปุ่มดูรายละเอียด */
+    .btn-outline-primary {
+        color: #084298;
+        border-color: #084298;
+    }
+    .btn-outline-primary:hover {
+        color: #fff;
+        background-color: #084298;
+        border-color: #084298;
+    }
 </style>
 {% endblock %}
 
@@ -82,14 +98,14 @@
                 <tbody>
                     {% for request in service_requests %}
                     <tr>
-                        <td>{{ request.created_at|date:"d/m/Y H:i" }}</td>
-                        <td>{{ request.appointment_date|date:"d/m/Y" }}</td>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.created_at|date:"d/m/Y H:i" }}</td>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.appointment_date|date:"d/m/Y" }}</td>
                         <!--<td>{{ request.appointment_time|time:"H:i" }}</td>-->
-                        <td>{{ request.customer.customer_name }}</td>
-                        <td>{{ request.get_request_type_display }}</td>
-                        <td>{{ request.description|truncatechars:50 }}</td>
-                        <td>{{ request.technician.customer.customer_name|default:"-" }}</td>
-                        <td>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.customer.customer_name }}</td>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.get_request_type_display }}</td>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.description|truncatechars:50 }}</td>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.technician.customer.customer_name|default:"-" }}</td>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">
                             {% if request.status == 'assigned' %}
                                 <span class="badge bg-warning">{{ request.get_status_display }}</span>
                             {% elif request.status == 'accepted' %}
@@ -111,7 +127,7 @@
                             {% endif %}
                         </td>
                         <!-- เพิ่มในตารางหรือการ์ดแสดงรายการ -->
-                        <td>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">
                             {% if request.warranty_status == 'in_warranty' %}
                                 <span class="badge bg-success">อยู่ในประกัน</span>
                             {% elif request.warranty_status == 'out_of_warranty' %}
@@ -121,7 +137,7 @@
                             {% endif %}
                         </td>
                         <!-- แก้ไขส่วนของ <td> ที่แสดงการจัดการ (ในส่วนของ table row) -->
-                        <td>
+                        <td onclick="window.location.href='{% url 'service:update_status' request.pk %}'">
                             <a href="{% url 'service:update_status' request.pk %}" 
                             class="btn btn-sm btn-primary-update">
                                 อัพเดทสถานะ
