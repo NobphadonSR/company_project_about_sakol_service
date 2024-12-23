@@ -23,6 +23,10 @@ from accounts.models import User
 from django.views.generic.detail import BaseDetailView
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_POST
+from openpyxl import Workbook
+import io
 
 # หน้าแรก
 class HomeView(TemplateView):
@@ -222,6 +226,21 @@ class ServiceRecordListView(LoginRequiredMixin, ServiceStaffRequired, ListView):
     model = ServiceRecord
     template_name = 'service/record_list.html'
     context_object_name = 'records'
+    
+    def get_queryset(self):
+        # เรียงลำดับตามวันที่และเวลาล่าสุด
+        return ServiceRecord.objects.all().order_by('-date', '-time')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # เพิ่มข้อมูลเพิ่มเติมที่ต้องการแสดงในหน้า
+        context['status_colors'] = {
+            'pending': 'warning',
+            'in_progress': 'info', 
+            'completed': 'success',
+            'cancelled': 'danger'
+        }
+        return context
 
 # สร้างบันทึกงาน
 class ServiceRecordCreateView(LoginRequiredMixin, ServiceStaffRequired, CreateView):
@@ -1171,3 +1190,209 @@ class CustomerMapView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             
         context['markers'] = markers
         return context
+
+@require_POST
+def upload_excel(request):
+    try:
+        excel_file = request.FILES['excel_file']
+        
+        # อ่านไฟล์ Excel
+        if excel_file.name.endswith('.csv'):
+            df = pd.read_csv(excel_file)
+        else:
+            df = pd.read_excel(excel_file)
+
+        # ทำความสะอาดชื่อคอลัมน์
+        df.columns = df.columns.str.strip()  # ลบช่องว่างหน้า-หลัง
+        
+        # Map column names
+        column_mapping = {
+            'เลขงาน': 'job_number',
+            'ชื่อลูกบ้าน': 'customer_name',
+            'โครงการ': 'project_name',
+            'อาการรับแจ้ง': 'description',
+            'สถานะ': 'status',
+            'วดป.': 'date',
+            'เวลา': 'time',
+            'เลขที่บิล': 'bill_number',
+            'เบอร์ติดต่อ': 'phone',
+            'บ้านเลขที่': 'house_number',
+            'แปลง': 'plot_number',
+            'แบบ': 'house_type',
+            'รหัสโครงการ': 'project_code',
+            'จนท.': 'technician_name',
+            'เบอร์ติดต่อ จนท.': 'technician_phone',
+            'วัสดุ/อุปกรณ์ที่ผิดปกติ': 'equipment_status',
+            'สาเหตุที่ตรวจพบ': 'cause_found',
+            'การแก้ไข': 'solution',
+            'หมายเหตุ': 'notes'
+        }
+
+        # เปลี่ยนชื่อคอลัมน์
+        df = df.rename(columns=column_mapping)
+        
+        success_count = 0
+        error_records = []
+
+        for index, row in df.iterrows():
+            try:
+                # สร้างหรือค้นหาลูกค้า
+                customer, created = Customer.objects.get_or_create(
+                    customer_name=row['ชื่อลูกบ้าน'],  # ใช้ชื่อคอลัมน์เดิม
+                    defaults={
+                        'project_name': row['โครงการ'],  # ใช้ชื่อคอลัมน์เดิม
+                        'phone': row.get('เบอร์ติดต่อ', ''),
+                        'house_number': row.get('บ้านเลขที่', ''),
+                        'plot_number': row.get('แปลง', ''),
+                        'house_type': row.get('แบบ', ''),
+                        'project_code': row.get('รหัสโครงการ', '')
+                    }
+                )
+
+                # แปลงวันที่
+                try:
+                    date_str = str(row['วดป.'])
+                    date_value = pd.to_datetime(date_str).date()
+                except:
+                    date_value = None
+
+                # สร้าง ServiceRecord
+                ServiceRecord.objects.create(
+                    job_number=str(row['เลขงาน']),
+                    customer=customer,
+                    description=row['อาการรับแจ้ง'],
+                    status=row['สถานะ'],
+                    date=date_value,
+                    time=str(row['เวลา']),
+                    bill_number=str(row.get('เลขที่บิล', '')),
+                    technician_name=row.get('จนท.', ''),
+                    technician_phone=row.get('เบอร์ติดต่อ จนท.', ''),
+                    equipment_status=row.get('วัสดุ/อุปกรณ์ที่ผิดปกติ', ''),
+                    cause_found=row.get('สาเหตุที่ตรวจพบ', ''),
+                    solution=row.get('การแก้ไข', ''),
+                    notes=row.get('หมายเหตุ', '')
+                )
+                success_count += 1
+
+            except Exception as e:
+                print(f"Error in row {index + 2}: {str(e)}")  # เพิ่ม debug log
+                error_records.append({
+                    'row': index + 2,
+                    'error': str(e)
+                })
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'นำเข้าข้อมูลสำเร็จ {success_count} รายการ',
+            'errors': error_records
+        })
+
+    except Exception as e:
+        print(f"Upload error: {str(e)}")  # เพิ่ม debug log
+        return JsonResponse({
+            'status': 'error',
+            'message': f'เกิดข้อผิดพลาด: {str(e)}'
+        }, status=400)
+
+def download_template(request):
+    """สร้างไฟล์ Excel template สำหรับการนำเข้าข้อมูล"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Service Records Template"
+
+    # กำหนดหัวคอลัมน์ตามข้อมูลที่ต้องการ
+    headers = [
+        'ลำดับ',
+        'สถานะจบงาน',
+        'ปี พ.ศ.',
+        'วดป.',
+        'ด.',
+        'เวลา',
+        'เลขงาน',
+        'เลขที่บิล',
+        'ชื่อลูกบ้าน',
+        'เบอร์ติดต่อ',
+        'จนท.',
+        'เบอร์ติดต่อ จนท.',
+        'รหัสโครงการ',
+        'โครงการ',
+        'บ้านเลขที่',
+        'แปลง',
+        'แบบ',
+        'โอน',
+        'วันที่หมดประกัน',
+        'อาการรับแจ้ง',
+        'สถานะ',
+        'วันนัด',
+        'เวลานัด',
+        'วัสดุ/อุปกรณ์ที่ผิดปกติ',
+        'สาเหตุที่ตรวจพบ',
+        'การแก้ไข',
+        'ชื่อ',
+        'หมายเหตุ',
+        'จำนวน',
+        'Link รูปภาพที่ออกSERVICE',
+        'หมายเหตุ.1'
+    ]
+    ws.append(headers)
+
+    # ตัวอย่างข้อมูล
+    sample_data = [
+        '1',                    # ลำดับ
+        '√',                    # สถานะจบงาน
+        '61',                   # ปี พ.ศ.
+        '3/1/2561',            # วดป.
+        '1',                    # ด.
+        '11.13 น.',            # เวลา
+        'AF61-0001',           # เลขงาน
+        'IV2108473',           # เลขที่บิล
+        'คุณสุรทิพย์',          # ชื่อลูกบ้าน
+        '061-6253253',         # เบอร์ติดต่อ
+        'คุณโบว์',             # จนท.
+        '088-2494614',         # เบอร์ติดต่อ จนท.
+        'CSN',                 # รหัสโครงการ
+        'ชัยพฤกษ์ ศรีนครินทร์', # โครงการ
+        '129/181',             # บ้านเลขที่
+        '00J13',               # แปลง
+        '177PW223T',           # แบบ
+        '12/9/2559',           # โอน
+        '12/9/2560',           # วันที่หมดประกัน
+        'สายสัญญาณทีวีไม่เข้า',  # อาการรับแจ้ง
+        'จบงาน/ให้คำปรึกษา',    # สถานะ
+        '12/9/2559',           # วันนัด
+        '10.00 น.',            # เวลานัด
+        'ปกติ',                # วัสดุ/อุปกรณ์ที่ผิดปกติ
+        'เช็คระบบภายในตู้เทสกันดูดRCBO 5ตัว ตัดที่9MA ปกติ',  # สาเหตุที่ตรวจพบ
+        'เช็คอุปกรณ์และขันน็อตแน่นทุกตัว เทสกันดูด เมนต์ เซอร์กิตทุกตัว',  # การแก้ไข
+        'มานพ+บุญมา',          # ชื่อ
+        'ค่าบริการ IV.1811256', # หมายเหตุ
+        '856',                 # จำนวน
+        'ส่งเคลม ของดีกลับมาคืนเข้าสต็อก',  # Link รูปภาพที่ออกSERVICE
+        'ลูกค้าไม่ได้อยู่บ้านหลังนี้'  # หมายเหตุ.1
+    ]
+    ws.append(sample_data)
+
+    # ปรับความกว้างคอลัมน์
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column].width = adjusted_width
+
+    # สร้าง response
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=service_record_template.xlsx'
+    return response

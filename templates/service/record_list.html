@@ -29,6 +29,44 @@
         background-color: #ffffff;
         color: #317d5a;
     }
+    /* เพิ่มสไตล์ใหม่สำหรับ upload zone */
+    .upload-zone {
+        border: 2px dashed #ccc;
+        padding: 20px;
+        text-align: center;
+        background: #f8f9fa;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .upload-zone:hover {
+        border-color: #084298;
+        background: #e9ecef;
+    }
+
+    .upload-zone.dragover {
+        border-color: #084298;
+        background: #e3f2fd;
+    }
+
+    .file-info {
+        margin-top: 10px;
+        padding: 10px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .progress {
+        margin-top: 10px;
+        display: none;
+    }
+
+    .template-download {
+        margin-top: 10px;
+        font-size: 0.9em;
+    }
 </style>
 {% endblock %}
 
@@ -38,7 +76,9 @@
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">รายการบันทึกการบริการ</h5>
             <div>
-                <a href="{% url 'service:create_record' %}" class="btn btn-primary"><i class="fa-solid fa-plus"></i> เพิ่มบันทึกใหม่</a>
+                <a href="{% url 'service:create_record' %}" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i> เพิ่มบันทึกใหม่
+                </a>
                 <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
                     <i class="fas fa-file-excel"></i> นำเข้าข้อมูล Excel
                 </button>
@@ -46,74 +86,74 @@
         </div>
     </div>
     <div class="card-body">
-        <!-- ฟิลเตอร์การค้นหา -->
-        <form method="get" class="mb-4">
-            <div class="row">
-                <div class="col-md-3">
-                    <input type="text" name="search" class="form-control" placeholder="ค้นหา...">
-                </div>
-                <div class="col-md-2">
-                    <select name="status" 
-                            class="form-select"
-                            title="กรองตามสถานะ"
-                            aria-label="กรองตามสถานะ">
-                        <option value="">- สถานะทั้งหมด -</option>
-                        <option value="completed">จบงาน</option>
-                        <option value="pending">รอดำเนินการ</option>
-                        <option value="in_progress">กำลังดำเนินการ</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary">ค้นหา</button>
-                </div>
-            </div>
-        </form>
-
         <div class="table-responsive">
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>เลขงาน</th>
-                        <th>วันที่</th>
-                        <th>ลูกค้า</th>
-                        <th>โครงการ</th>
+                        <th>ลำดับ</th>
                         <th>สถานะ</th>
+                        <th>วันที่</th>
+                        <th>เวลา</th>
+                        <th>เลขงาน</th>
+                        <th>เลขที่บิล</th>
+                        <th>ชื่อลูกค้า</th>
+                        <th>โครงการ</th>
+                        <th>บ้านเลขที่</th>
+                        <th>อาการที่แจ้ง</th>
                         <th>การดำเนินการ</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for record in object_list %}
+                    {% for record in records %}
                     <tr>
-                        <td>{{ record.job_number }}</td>
+                        <td>{{ record.sequence }}</td>
+                        <td>
+                            {% if record.completion_status %}
+                                <span class="badge bg-success">✓</span>
+                            {% else %}
+                                <span class="badge bg-warning">-</span>
+                            {% endif %}
+                        </td>
                         <td>{{ record.date|date:"d/m/Y" }}</td>
+                        <td>{{ record.time }}</td>
+                        <td>{{ record.job_number }}</td>
+                        <td>{{ record.bill_number|default:"-" }}</td>
                         <td>{{ record.customer.customer_name }}</td>
-                        <td>{{ record.customer.project_name }}</td>
-                        <td>{{ record.get_completion_status_display }}</td>
+                        <td>{{ record.project_name }}</td>
+                        <td>{{ record.house_number }}</td>
+                        <td>{{ record.description|truncatechars:50 }}</td>
                         <td>
                             <div class="btn-group">
-                                <a href="{% url 'service:edit_record' record.id %}" 
-                                   class="btn btn-sm btn-primary"
-                                   title="แก้ไขบันทึก"
-                                   aria-label="แก้ไขบันทึก"><i class="fas fa-edit"></i> แก้ไข</a>
-                                <button type="button"
+                                <a href="{% url 'service:record_detail' record.id %}" 
+                                   class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'service:record_edit' record.id %}" 
+                                   class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" 
                                         class="btn btn-sm btn-danger"
-                                        onclick="confirmDelete( '{% url 'service:delete_record' record.id %}' )"
-                                        title="ลบบันทึก"
-                                        aria-label="ลบบันทึก"><i class="fas fa-trash"></i> ลบ</button>
-                                <a href="{% url 'service:generate_bill' record.id %}" 
-                                   class="btn btn-sm btn-success"
-                                   title="ออกใบเสร็จ"
-                                   aria-label="ออกใบเสร็จ"><i class="fa-solid fa-wallet"></i> ออกใบเสร็จ</a>
+                                        onclick="confirmDelete('{% url 'service:record_delete' record.id %}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center">ไม่พบข้อมูล</td>
+                        <td colspan="11" class="text-center">ไม่พบข้อมูล</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+
+        <div class="mt-3">
+            <p>จำนวนรายการทั้งหมด: {{ records.count }}</p>
+            {% if debug %}
+            <pre>{{ records|pprint }}</pre>
+            {% endif %}
         </div>
 
         <!-- การแบ่งหน้า -->
@@ -143,33 +183,76 @@
     </div>
 </div>
 
-<!-- Modal สำหรับอัพโหลด Excel -->
+<!-- แทนที่ Modal เดิมด้วยอันใหม่ -->
 <div class="modal fade" id="uploadExcelModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-file-excel"></i> นำเข้าข้อมูล Excel</h5>
-                <button type="button" 
-                        class="btn-close" 
-                        data-bs-dismiss="modal" 
-                        title="ปิด"
-                        aria-label="ปิด"></button>
+                <h5 class="modal-title">
+                    <i class="fas fa-file-excel"></i> นำเข้าข้อมูล Excel
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="uploadExcelForm" method="post" enctype="multipart/form-data" 
-                      action=" ">
+                <!-- ดาวน์โหลดเทมเพลต -->
+                <div class="template-download mb-4">
+                    <a href="{% url 'service:download_template' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-download"></i> ดาวน์โหลดเทมเพลต Excel
+                    </a>
+                    <small class="text-muted ms-2">
+                        ดาวน์โหลดเทมเพลตเพื่อดูรูปแบบข้อมูลที่ถูกต้อง
+                    </small>
+                </div>
+
+                <form id="uploadExcelForm" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="excel_file" class="form-label">เลือกไฟล์ Excel</label>
+                    <!-- Upload Zone -->
+                    <div class="upload-zone" id="dropZone">
+                        <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                        <h5>ลากไฟล์มาวางที่นี่ หรือ คลิกเพื่อเลือกไฟล์</h5>
+                        <p class="text-muted">รองรับไฟล์ .xlsx, .xls, .csv</p>
                         <input type="file" 
                                id="excel_file" 
                                name="excel_file" 
-                               class="form-control" 
-                               accept=".xlsx,.xls"
-                               title="เลือกไฟล์ Excel">
+                               accept=".xlsx,.xls,.csv"
+                               style="display: none;">
                     </div>
-                    <button type="submit" class="btn btn-primary">อัพโหลด</button>
+
+                    <!-- File Info -->
+                    <div id="fileInfo" class="file-info" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-file-excel"></i>
+                                <span id="fileName">ไม่ได้เลือกไฟล์</span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="removeFile">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+
+                    <!-- Preview Table -->
+                    <div id="previewData" class="mt-4" style="display: none;">
+                        <h6>ตัวอย่างข้อมูล</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead id="previewHeader"></thead>
+                                <tbody id="previewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-primary" id="submitUpload" disabled>
+                    นำเข้าข้อมูล
+                </button>
             </div>
         </div>
     </div>
@@ -177,31 +260,158 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- เพิ่ม XLSX library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+// คงฟังก์ชัน confirmDelete เดิมไว้
 function confirmDelete(url) {
     if (confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
         window.location.href = url;
     }
 }
 
-document.getElementById('uploadExcelForm').addEventListener('submit', function(e) {
+// เพิ่ม JavaScript ใหม่
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('excel_file');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+const removeFile = document.getElementById('removeFile');
+const submitBtn = document.getElementById('submitUpload');
+const previewData = document.getElementById('previewData');
+const progressBar = document.querySelector('.progress');
+
+function preventDefaults(e) {
     e.preventDefault();
-    const formData = new FormData(this);
-    
-    fetch(this.action, {
+    e.stopPropagation();
+}
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+});
+
+['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, unhighlight, false);
+});
+
+function highlight(e) {
+    dropZone.classList.add('dragover');
+}
+
+function unhighlight(e) {
+    dropZone.classList.remove('dragover');
+}
+
+dropZone.addEventListener('drop', handleDrop, false);
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', handleFiles);
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    handleFiles({ target: { files: files } });
+}
+
+function handleFiles(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const validTypes = ['.xlsx', '.xls', '.csv'];
+        const fileType = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (!validTypes.includes(fileType)) {
+            alert('กรุณาอัพโหลดไฟล์ Excel หรือ CSV เท่านั้น');
+            return;
+        }
+
+        fileName.textContent = file.name;
+        fileInfo.style.display = 'block';
+        submitBtn.disabled = false;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+            showPreview(jsonData);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+function showPreview(data) {
+    if (data.length === 0) return;
+
+    const headers = data[0];
+    const rows = data.slice(1, 6); // แสดง 5 แถวแรก
+
+    const headerHTML = `
+        <tr>
+            ${headers.map(h => `<th>${h}</th>`).join('')}
+        </tr>
+    `;
+
+    const bodyHTML = rows.map(row => `
+        <tr>
+            ${row.map(cell => `<td>${cell}</td>`).join('')}
+        </tr>
+    `).join('');
+
+    document.getElementById('previewHeader').innerHTML = headerHTML;
+    document.getElementById('previewBody').innerHTML = bodyHTML;
+    previewData.style.display = 'block';
+}
+
+removeFile.addEventListener('click', () => {
+    fileInput.value = '';
+    fileInfo.style.display = 'none';
+    previewData.style.display = 'none';
+    submitBtn.disabled = true;
+});
+
+document.getElementById('submitUpload').addEventListener('click', function() {
+    const formData = new FormData(document.getElementById('uploadExcelForm'));
+    progressBar.style.display = 'block';
+
+    fetch('{% url "service:upload_excel" %}', {
         method: 'POST',
         body: formData,
-        credentials: 'same-origin'
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            alert('อัพโหลดข้อมูลสำเร็จ');
+            alert('นำเข้าข้อมูลสำเร็จ');
             location.reload();
         } else {
-            alert('เกิดข้อผิดพลาดในการอัพโหลด');
+            alert(data.message || 'เกิดข้อผิดพลาดในการนำเข้าข้อมูล');
         }
+    })
+    .catch(error => {
+        alert('เกิดข้อผิดพลาด: ' + error);
+    })
+    .finally(() => {
+        progressBar.style.display = 'none';
     });
 });
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 </script>
 {% endblock %}

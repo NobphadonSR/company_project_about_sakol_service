@@ -9,6 +9,17 @@
         background-color: #084298;
         border-color: #084298;
     }
+    .forgot-password {
+        margin-top: 1rem;
+        text-align: right;
+    }
+    .forgot-password a {
+        color: #084298;
+        text-decoration: none;
+    }
+    .forgot-password a:hover {
+        text-decoration: underline;
+    }
 </style>
 {% endblock %}
 
@@ -25,6 +36,9 @@
                     {{ form.as_p }}
                     <button type="submit" class="btn btn-primary">เข้าสู่ระบบ</button>
                 </form>
+                <div class="forgot-password">
+                    <a href="{% url 'accounts:password_reset' %}">ลืมรหัสผ่าน?</a>
+                </div>
             </div>
         </div>
     </div>

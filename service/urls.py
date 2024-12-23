@@ -43,4 +43,7 @@ urlpatterns = [
     path('update-status/<int:pk>/', views.UpdateServiceStatusView.as_view(), name='update_status'),
     path('customer-map/', views.CustomerMapView.as_view(), name='customer_map'),
     path('request/<int:pk>/warranty/', views.manage_warranty, name='manage_warranty'),
+    # เพิ่ม URL patterns
+    path('upload-excel/', views.upload_excel, name='upload_excel'),
+    path('download-template/', views.download_template, name='download_template'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

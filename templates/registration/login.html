@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}เข้าสู่ระบบ{% endblock %}
+{% block title %}Sakol Service - เข้าสู่ระบบ{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -16,6 +16,17 @@
     }
     a {
         color: #084298;
+        text-decoration: underline;
+    }
+    .forgot-password {
+        margin-top: 1rem;
+        text-align: right;
+    }
+    .forgot-password a {
+        color: #084298;
+        text-decoration: none;
+    }
+    .forgot-password a:hover {
         text-decoration: underline;
     }
 </style>
@@ -56,6 +67,8 @@
                 
                 <div class="text-center">
                     <p>ยังไม่มีบัญชีผู้ใช้? <a href="{% url 'accounts:register' %}">ลงทะเบียน</a></p>
+
+                    <p><a href="{% url 'accounts:password_reset' %}">ลืมรหัสผ่าน?</a></p>
                 </div>
             </div>
         </div>

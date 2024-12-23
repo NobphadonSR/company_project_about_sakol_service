@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from datetime import timedelta
-
+from accounts.models import Customer
 class ServiceRequest(models.Model):
     REQUEST_TYPES = [
         ('repair', 'แจ้งซ่อม'),
@@ -155,42 +155,71 @@ class ServiceImage(models.Model):
         super().save(*args, **kwargs)
 
 class ServiceRecord(models.Model):
-    COMPLETION_STATUS = [
-        ('completed', 'เสร็จสมบูรณ์'),
-        ('partial', 'เสร็จบางส่วน'),
-        ('pending_parts', 'รออะไหล่'),
+    STATUS_CHOICES = (
+        ('pending', 'รอดำเนินการ'),
+        ('in_progress', 'กำลังดำเนินการ'),
+        ('completed', 'เสร็จสิ้น'),
         ('cancelled', 'ยกเลิก'),
-    ]
-
-    job_number = models.CharField(max_length=50, unique=True, verbose_name='เลขที่งาน')
-    customer = models.ForeignKey('accounts.Customer', on_delete=models.CASCADE, related_name='service_records')
-    project_code = models.CharField(max_length=50, verbose_name='รหัสโครงการ')
-    plot_number = models.CharField(max_length=50, verbose_name='เลขที่แปลง')
-    reported_issue = models.TextField(verbose_name='ปัญหาที่แจ้ง')
-    appointment_date = models.DateField(verbose_name='วันที่นัดหมาย')
-    appointment_time = models.TimeField(verbose_name='เวลานัดหมาย')
-    completion_status = models.CharField(max_length=50, choices=COMPLETION_STATUS, verbose_name='สถานะการดำเนินการ')
-    faulty_equipment = models.TextField(blank=True, verbose_name='อุปกรณ์ที่เสีย')
-    cause = models.TextField(blank=True, verbose_name='สาเหตุ')
-    solution = models.TextField(blank=True, verbose_name='การแก้ไข')
-    service_cost = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2, 
-        default=0,
-        validators=[MinValueValidator(0)],
-        verbose_name='ค่าบริการ'
     )
-    notes = models.TextField(blank=True, verbose_name='หมายเหตุ')
-    record_date = models.DateTimeField(default=timezone.now, verbose_name='วันที่บันทึก')
-    last_modified = models.DateTimeField(auto_now=True, verbose_name='แก้ไขล่าสุด')
+
+    # ข้อมูลพื้นฐาน
+    sequence = models.IntegerField(verbose_name="ลำดับ", null=True, blank=True)
+    completion_status = models.BooleanField(verbose_name="สถานะจบงาน", default=False)
+    year = models.CharField(max_length=4, verbose_name="ปี พ.ศ.", null=True, blank=True)
+    date = models.DateField(verbose_name="วันที่", default=timezone.now)
+    month = models.IntegerField(verbose_name="เดือน", null=True, blank=True)
+    time = models.CharField(max_length=10, verbose_name="เวลา", null=True, blank=True)
+    
+    # ข้อมูลงานและบิล
+    job_number = models.CharField(max_length=20, verbose_name="เลขงาน", unique=True)
+    bill_number = models.CharField(max_length=20, verbose_name="เลขที่บิล", null=True, blank=True)
+    
+    # ข้อมูลลูกค้าและเจ้าหน้าที่
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='service_records')
+    customer_phone = models.CharField(max_length=15, verbose_name="เบอร์ติดต่อลูกค้า", null=True, blank=True)  # ทำให้เป็น optional
+    technician_name = models.CharField(max_length=100, verbose_name="ชื่อเจ้าหน้าที่", null=True, blank=True)
+    technician_phone = models.CharField(max_length=15, verbose_name="เบอร์ติดต่อเจ้าหน้าที่", null=True, blank=True)
+    
+    # ข้อมูลโครงการและบ้าน
+    project_code = models.CharField(max_length=10, verbose_name="รหัสโครงการ", null=True, blank=True)
+    project_name = models.CharField(max_length=100, verbose_name="ชื่อโครงการ", null=True, blank=True)
+    house_number = models.CharField(max_length=20, verbose_name="บ้านเลขที่", null=True, blank=True)
+    plot_number = models.CharField(max_length=20, verbose_name="เลขที่แปลง", null=True, blank=True)
+    house_type = models.CharField(max_length=20, verbose_name="แบบบ้าน", null=True, blank=True)
+    
+    # วันที่สำคัญ
+    transfer_date = models.DateField(verbose_name="วันที่โอน", null=True, blank=True)
+    warranty_expiry = models.DateField(verbose_name="วันที่หมดประกัน", null=True, blank=True)
+    
+    # รายละเอียดการบริการ
+    description = models.TextField(verbose_name="อาการที่รับแจ้ง")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="สถานะ")
+    appointment_date = models.DateField(verbose_name="วันนัด", null=True, blank=True)
+    appointment_time = models.CharField(max_length=10, verbose_name="เวลานัด", null=True, blank=True)
+    
+    # รายละเอียดการตรวจสอบและซ่อม
+    equipment_status = models.CharField(max_length=100, verbose_name="สถานะวัสดุ/อุปกรณ์", null=True, blank=True)
+    cause_found = models.TextField(verbose_name="สาเหตุที่ตรวจพบ", null=True, blank=True)
+    solution = models.TextField(verbose_name="การแก้ไข", null=True, blank=True)
+    technician_names = models.CharField(max_length=200, verbose_name="ชื่อช่างผู้ดำเนินการ", null=True, blank=True)
+    
+    # ข้อมูลเพิ่มเติม
+    notes = models.TextField(verbose_name="หมายเหตุ", null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="จำนวนเงิน", null=True, blank=True)
+    service_images = models.TextField(verbose_name="ลิงก์รูปภาพ", null=True, blank=True)
+    additional_notes = models.TextField(verbose_name="หมายเหตุเพิ่มเติม", null=True, blank=True)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)  # ลบ default=timezone.now ออก
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-record_date']
-        verbose_name = 'บันทึกการซ่อม'
-        verbose_name_plural = 'บันทึกการซ่อม'
+        ordering = ['-date', '-time']
+        verbose_name = "บันทึกการบริการ"
+        verbose_name_plural = "บันทึกการบริการ"
 
     def __str__(self):
-        return f"บันทึกการซ่อม {self.job_number}"
+        return f"{self.job_number} - {self.customer.customer_name} ({self.date})"
 
 class TechnicianProposal(models.Model):
     service_request = models.ForeignKey(

@@ -83,6 +83,7 @@
             <table class="table">
                 <thead>
                     <tr>
+                        <th>เลขที่คำขอ</th>
                         <th>วันที่แจ้ง</th>
                         <th>วันที่นัดหมาย</th>
                         <!--<th>เวลานัดหมาย</th>-->
@@ -98,6 +99,7 @@
                 <tbody>
                     {% for request in service_requests %}
                     <tr>
+                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'"">{{ request.id }}</td>
                         <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.created_at|date:"d/m/Y H:i" }}</td>
                         <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.appointment_date|date:"d/m/Y" }}</td>
                         <!--<td>{{ request.appointment_time|time:"H:i" }}</td>-->
