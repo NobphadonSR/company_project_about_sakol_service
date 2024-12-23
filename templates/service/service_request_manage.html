@@ -32,6 +32,18 @@
         border-color: #084298;
         color: #084298;
     }
+    .modal-backdrop {
+        opacity: 0.5;
+    }
+    
+    .modal {
+        background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-content {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
 </style>
 {% endblock %}
 
@@ -108,11 +120,20 @@
                                 -
                             {% endif %}
                         </td>
+                        <!-- แก้ไขส่วนของ <td> ที่แสดงการจัดการ (ในส่วนของ table row) -->
                         <td>
                             <a href="{% url 'service:update_status' request.pk %}" 
-                               class="btn btn-sm btn-primary-update">
+                            class="btn btn-sm btn-primary-update">
                                 อัพเดทสถานะ
                             </a>
+                            
+                            <!-- เพิ่มปุ่มจัดการประกัน -->
+                            <button type="button" 
+                                    class="btn btn-sm btn-info" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#warrantyModal{{ request.pk }}">
+                                จัดการประกัน
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
@@ -125,4 +146,160 @@
         </div>
     </div>
 </div>
+
+<!-- ย้าย Modals ออกมานอก table -->
+{% for request in service_requests %}
+<div class="modal fade" id="warrantyModal{{ request.pk }}" tabindex="-1" aria-labelledby="warrantyModalLabel{{ request.pk }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="warrantyModalLabel{{ request.pk }}">จัดการประกัน - เลขที่คำขอ {{ request.pk }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="warrantyForm{{ request.pk }}" onsubmit="return false;">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">วันที่เริ่มประกัน</label>
+                        <input type="date" class="form-control" name="warranty_date" required>
+                    </div>
+                    <!-- แสดงข้อมูลประกันปัจจุบัน ถ้ามี -->
+                    {% if request.warranty_start_date %}
+                    <div class="alert alert-info">
+                        <strong>ประกันปัจจุบัน:</strong><br>
+                        เริ่ม: {{ request.warranty_start_date|date:"d/m/Y" }}<br>
+                        สิ้นสุด: {{ request.warranty_end_date|date:"d/m/Y" }}
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="btn btn-success" onclick="setWarranty({{ request.pk }})">
+                    ตั้งค่าประกัน
+                </button>
+                <button type="button" class="btn btn-danger" onclick="removeWarranty({{ request.pk }})">
+                    ยกเลิกประกัน
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // จัดการ Modal events
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.addEventListener('show.bs.modal', function (event) {
+            // ทำความสะอาด form เมื่อเปิด modal
+            const form = this.querySelector('form');
+            if (form) form.reset();
+        });
+    });
+});
+
+function setWarranty(requestId) {
+    const form = document.getElementById(`warrantyForm${requestId}`);
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const formData = new FormData(form);
+    formData.append('action', 'set_warranty');
+    
+    // แสดง loading state
+    const submitBtn = event.target;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'กำลังดำเนินการ...';
+
+    fetch(`/service/request/${requestId}/warranty/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // ซ่อน modal ก่อน show alert
+            const modal = bootstrap.Modal.getInstance(document.getElementById(`warrantyModal${requestId}`));
+            modal.hide();
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('เกิดข้อผิดพลาด: ' + error);
+    })
+    .finally(() => {
+        // คืนค่า button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+}
+
+function removeWarranty(requestId) {
+    if (!confirm('ต้องการยกเลิกประกันใช่หรือไม่?')) return;
+    
+    const formData = new FormData();
+    formData.append('action', 'remove_warranty');
+    
+    // แสดง loading state
+    const submitBtn = event.target;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'กำลังดำเนินการ...';
+
+    fetch(`/service/request/${requestId}/warranty/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // ซ่อน modal ก่อน show alert
+            const modal = bootstrap.Modal.getInstance(document.getElementById(`warrantyModal${requestId}`));
+            modal.hide();
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('เกิดข้อผิดพลาด: ' + error);
+    })
+    .finally(() => {
+        // คืนค่า button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
 {% endblock %}

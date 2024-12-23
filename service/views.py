@@ -948,6 +948,56 @@ def confirm_service_request(request, request_id):
             'message': str(e)
         }, status=500)
 
+@login_required
+def manage_warranty(request, pk):
+    """จัดการประกันสินค้า"""
+    if request.user.user_type != 'service':
+        return JsonResponse({
+            'status': 'error',
+            'message': 'ไม่มีสิทธิ์ดำเนินการ'
+        }, status=403)
+
+    service_request = get_object_or_404(ServiceRequest, pk=pk)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        warranty_date = request.POST.get('warranty_date')
+        
+        try:
+            if action == 'set_warranty':
+                # แปลงวันที่จาก string เป็น date object
+                start_date = datetime.strptime(warranty_date, '%Y-%m-%d').date() if warranty_date else None
+                service_request.set_warranty(start_date)
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'ตั้งค่าประกันเรียบร้อยแล้ว',
+                    'warranty_start': service_request.warranty_start_date.strftime('%d/%m/%Y'),
+                    'warranty_end': service_request.warranty_end_date.strftime('%d/%m/%Y')
+                })
+            
+            elif action == 'remove_warranty':
+                service_request.warranty_status = 'out_of_warranty'
+                service_request.warranty_start_date = None
+                service_request.warranty_end_date = None
+                service_request.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'ยกเลิกประกันเรียบร้อยแล้ว'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+            
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Method not allowed'
+    }, status=405)
+
 # ลบรูปภาพงาน
 @login_required
 def delete_service_image(request, image_id):

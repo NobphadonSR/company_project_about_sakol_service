@@ -29,6 +29,7 @@ class ServiceRequest(models.Model):
     WARRANTY_STATUS = [
         ('in_warranty', 'อยู่ในประกัน'),
         ('out_of_warranty', 'ไม่อยู่ในประกัน'),
+        ('pending_warranty', 'รอการตัดสินใจ'),
     ]
 
     SERVICE_TYPES = [
@@ -47,7 +48,7 @@ class ServiceRequest(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='วันที่สร้าง')
     is_confirmed = models.BooleanField(default=False, verbose_name='ยืนยันโดยฝ่ายบริการ')
-    warranty_status = models.CharField(max_length=20, choices=WARRANTY_STATUS, null=True, blank=True)
+    warranty_status = models.CharField(max_length=20, choices=WARRANTY_STATUS, default='pending_warranty', verbose_name='สถานะประกัน')
     
     # เพิ่มฟิลด์ใหม่
     need_advice = models.BooleanField(default=False, verbose_name='ต้องการคำแนะนำจากช่าง',help_text='เลือกตัวเลือกนี้หากต้องการให้ช่างแนะนำก่อนดำเนินการ')
@@ -78,6 +79,16 @@ class ServiceRequest(models.Model):
                 self.warranty_status = 'out_of_warranty'
 
         super().save(*args, **kwargs)
+
+    def set_warranty(self, start_date=None):
+        """ตั้งค่าประกัน 1 ปี"""
+        if start_date is None:
+            start_date = timezone.now().date()
+        
+        self.warranty_start_date = start_date
+        self.warranty_end_date = start_date + timedelta(days=365)
+        self.warranty_status = 'in_warranty'
+        self.save()
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'การแจ้งซ่อม'

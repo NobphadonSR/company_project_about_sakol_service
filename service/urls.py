@@ -42,4 +42,5 @@ urlpatterns = [
     path('manage/', views.ServiceRequestManageView.as_view(), name='manage_requests'),
     path('update-status/<int:pk>/', views.UpdateServiceStatusView.as_view(), name='update_status'),
     path('customer-map/', views.CustomerMapView.as_view(), name='customer_map'),
+    path('request/<int:pk>/warranty/', views.manage_warranty, name='manage_warranty'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
