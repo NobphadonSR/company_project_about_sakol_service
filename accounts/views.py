@@ -38,33 +38,49 @@ def profile(request):
 
 @login_required
 def edit_profile(request):
-    if request.method == 'POST':
-        # อัพเดทข้อมูลพื้นฐาน
-        user = request.user
-        user.email = request.POST.get('email')
-        user.phone = request.POST.get('phone')
-        
-        if user.user_type == 'technician':
-            technician = user.customer
-            technician.customer_name = request.POST.get('customer_name')
-            technician.address = request.POST.get('address','')
-            technician.save()
-        user.save()
-        
-        # อัพเดทข้อมูลลูกค้า (ถ้าเป็นลูกค้า)
-        if user.user_type == 'customer':
-            customer = user.customer
-            customer.customer_name = request.POST.get('customer_name')
-            customer.project_name = request.POST.get('project_name')
-            customer.house_number = request.POST.get('house_number')
-            customer.phone = request.POST.get('phone')
-            customer.location = request.POST.get('location')
-            customer.save()
-        
-        messages.success(request, 'อัพเดทข้อมูลเรียบร้อยแล้ว')
-        return redirect('accounts:profile')
-    
-    return render(request, 'accounts/edit_profile.html')
+  if request.method == 'POST':
+      # อัพเดทข้อมูลพื้นฐาน
+      user = request.user
+      user.email = request.POST.get('email')
+      user.phone = request.POST.get('phone')
+      
+      # จัดการรูปโปรไฟล์
+      if 'profile_image' in request.FILES:
+          print("Found profile image in request")  # เพิ่ม debug log
+          if user.profile_image:
+              # ลบรูปเก่าถ้ามี
+              user.profile_image.delete()
+          user.profile_image = request.FILES['profile_image']
+          print(f"Profile image saved: {user.profile_image.name}")  # เพิ่ม debug log
+      
+      if user.user_type == 'technician':
+          technician = user.customer
+          technician.customer_name = request.POST.get('customer_name')
+          technician.address = request.POST.get('address','')
+          technician.save()
+      
+      # บันทึกข้อมูลผู้ใช้
+      try:
+          user.save()
+          print("User saved successfully")  # เพิ่ม debug log
+          messages.success(request, 'อัพเดทข้อมูลเรียบร้อยแล้ว')
+      except Exception as e:
+          print(f"Error saving user: {str(e)}")  # เพิ่ม debug log
+          messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+      
+      # อัพเดทข้อมูลลูกค้า
+      if user.user_type == 'customer':
+          customer = user.customer
+          customer.customer_name = request.POST.get('customer_name')
+          customer.project_name = request.POST.get('project_name')
+          customer.house_number = request.POST.get('house_number')
+          customer.phone = request.POST.get('phone')
+          customer.location = request.POST.get('location')
+          customer.save()
+      
+      return redirect('accounts:profile')
+  
+  return render(request, 'accounts/edit_profile.html')
 
 def login_view(request):
     if request.method == 'POST':

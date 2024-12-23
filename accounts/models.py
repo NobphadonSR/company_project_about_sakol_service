@@ -11,6 +11,7 @@ class User(AbstractUser):
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES)
     phone = models.CharField(max_length=15)
     address = models.TextField(blank=True)
+    profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
 
 class Customer(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

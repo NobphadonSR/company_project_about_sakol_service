@@ -94,6 +94,15 @@
                 background: rgba(255, 255, 255, 0.1);
                 transform: translateY(-2px);
             }
+            /* เพิ่ม styles สำหรับรูปโปรไฟล์ */
+            .nav-link img.rounded-circle {
+                border: 2px solid #ffffff;
+                transition: all 0.3s ease;
+            }
+            
+            .nav-link:hover img.rounded-circle {
+                transform: scale(1.1);
+            }
 
             .dropdown-toggle::after {
                 display: contents;
@@ -134,7 +143,10 @@
                 .navbar-logo {
                     height: 32px;
                 }
-
+                .navbar-nav .nav-link img.rounded-circle {
+                    width: 28px;
+                    height: 28px;
+                }
                 .navbar-collapse {
                     background: rgba(255, 255, 255, 0.95);
                     /*-webkit-backdrop-filter: blur(10px);
@@ -205,6 +217,7 @@
                 padding: 0.5rem 1rem;
                 border-radius: 4px;
                 font-weight: 400;
+                align-items: center;
                 /*font-size: large;*/
             }
 
@@ -442,9 +455,13 @@
                 <!-- เมนูผู้ใช้ -->
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown d-none d-lg-block">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" >
-                            <i class="fa-solid fa-user fa-xl"></i>
-                            <!--<span>{{ user.username }}</span> -->
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <!-- เพิ่มส่วนแสดงรูปโปรไฟล์ -->
+                            {% if user.profile_image %}
+                                <img src="{{ user.profile_image.url }}" class="rounded-circle me-2" alt="Profile" style="width: 32px; height: 32px; object-fit: cover;">
+                                <!--<i class="fa-solid fa-user fa-xl me-2"></i>-->
+                            {% endif %}
+                            <span class="d-none d-md-inline">{{ user.username }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li>
@@ -473,7 +490,11 @@
                     <div class="d-lg-none">
                         <li class="nav-item">
                             <a class="nav-link d-flex align-items-center" href="{% url 'accounts:profile' %}">
-                                <i class="fas fa-user me-2"></i>
+                                {% if user.profile_image %}
+                                    <img src="{{ user.profile_image.url }}" class="rounded-circle me-2" alt="Profile" style="width: 24px; height: 24px; object-fit: cover;">
+                                {% else %}
+                                    <i class="fas fa-user me-2"></i>
+                                {% endif %}
                                 <span>โปรไฟล์</span>
                             </a>
                         </li>

@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 app_name = 'service'  # เพิ่มบรรทัดนี้
 
@@ -40,4 +42,4 @@ urlpatterns = [
     path('manage/', views.ServiceRequestManageView.as_view(), name='manage_requests'),
     path('update-status/<int:pk>/', views.UpdateServiceStatusView.as_view(), name='update_status'),
     path('customer-map/', views.CustomerMapView.as_view(), name='customer_map'),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
