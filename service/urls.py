@@ -29,6 +29,8 @@ urlpatterns = [
     path('update-job-status/<int:service_id>/', views.update_job_status, name='update_job_status'),
     path('generate-bill/<int:service_id>/', views.generate_bill, name='generate_bill'),
     path('request/<int:request_id>/customer-confirm/', views.confirm_customer_request, name='customer_confirm_request'),
+    # เพิ่ม URL สำหรับจัดการค่าใช้จ่าย
+    path('request/<int:request_id>/set-cost/', views.set_service_cost, name='set_service_cost'),
 
     # URLs สำหรับช่าง
     path('technician/calendar/', views.TechnicianCalendarView.as_view(), name='technician_calendar'),

@@ -53,6 +53,40 @@
             </div>
         </div>
 
+        <!-- เพิ่มส่วนแสดงข้อมูลโครงการ -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-building me-2"></i>ข้อมูลโครงการ
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>รหัสโครงการ:</strong></div>
+                    <div class="col-md-8">{{ request.customer.project_code|default:"-" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>ชื่อโครงการ:</strong></div>
+                    <div class="col-md-8">{{ request.customer.project_name|default:"-" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>บ้านเลขที่:</strong></div>
+                    <div class="col-md-8">{{ request.customer.house_number|default:"-" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>เลขที่แปลง:</strong></div>
+                    <div class="col-md-8">{{ request.customer.plot_number|default:"-" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>แบบบ้าน:</strong></div>
+                    <div class="col-md-8">{{ request.customer.house_type|default:"-" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>วันที่โอน:</strong></div>
+                    <div class="col-md-8">{{ request.customer.transfer_date|date:"d/m/Y"|default:"-" }}</div>
+                </div>
+            </div>
+        </div>
         <!-- เพิ่มส่วนแสดงข้อมูลประกัน -->
         {% if request.request_type in 'install,all_in' %}
         <div class="card mb-4">
@@ -148,7 +182,7 @@
                     {% csrf_token %}
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-thumbs-up me-2"></i>ยืนยันคำแนะนำและดำเนินการต่อ
+                            <i class="fas fa-thumbs-up me-2"></i>ยืนยันคำปรึกษาและดำเนินการต่อ
                         </button>
                     </div>
                 </form>
@@ -166,12 +200,13 @@
                 <!-- เพิ่มปุ่มให้คำแนะนำตรงนี้ -->
                 <a href="{% url 'service:submit_recommendation' request.id %}" 
                     class="btn btn-primary mb-3">
-                    <i class="fas fa-comment-medical"></i> ให้คำแนะนำการซ่อม
+                    <i class="fas fa-comment-medical"></i> ให้คำปรึกษา
                 </a>
                 <div class="d-flex flex-wrap gap-2 mb-3">
 
-                    <button type="button" class="btn btn-primary" onclick="updateServiceStatus( '{{ request.id }}' , 'accepted')"
-                            {% if request.status != 'assigned' or not request.is_confirmed %}disabled{% endif %}>
+                    <button type="button" class="btn btn-primary" 
+                            onclick="updateServiceStatus('{{ request.id }}', 'accepted')"
+                            {% if request.status != 'assigned' or not request.is_confirmed or not request.customer_confirmed %}disabled{% endif %}>
                         รับงาน
                     </button>
                     
@@ -339,15 +374,15 @@
         {% endif %}
 
         <!-- ส่วนสำหรับช่างให้คำแนะนำ -->
-        {% if user.user_type == 'technician' and request.need_advice and not request.technician_advice %}
+        <!--{% if user.user_type == 'technician' and request.need_advice and not request.technician_advice %}
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0">ให้คำแนะนำ</h5>
+                <h5 class="mb-0">ให้คำปรึกษา</h5>
             </div>
             <div class="card-body">
                 <form id="adviceForm">
                     <div class="mb-3">
-                        <label for="advice" class="form-label">คำแนะนำ</label>
+                        <label for="advice" class="form-label">คำปรึกษา</label>
                         <textarea id="advice" class="form-control" rows="4" required></textarea>
                     </div>
                     <div class="mb-3">
@@ -396,13 +431,14 @@
             });
         }
         </script>
-        {% endif %}
+        {% endif %}-->
 
+        <!-- 1. เพิ่มส่วนแสดงคำแนะนำจากช่างและการยืนยัน -->
         <!-- 1. เพิ่มส่วนแสดงคำแนะนำจากช่างและการยืนยัน -->
 {% if request.need_advice %}
 <div class="card mb-4">
     <div class="card-header">
-        <h5 class="mb-0">คำแนะนำจากช่าง</h5>
+        <h5 class="mb-0">คำปรึกษาจากช่าง</h5>
     </div>
     <div class="card-body">
         {% if request.technician_advice %}
@@ -426,29 +462,57 @@
                         class="btn btn-danger">ปฏิเสธ</button>
             </div>
             {% endif %}
-            {% else %}
-                <p class="text-muted">รอคำแนะนำจากช่าง</p>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- 2. เพิ่มส่วนยืนยันสำหรับฝ่ายบริการ -->
-    {% if user.user_type == 'service' and not request.is_confirmed %}
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">การยืนยัน</h5>
-        </div>
-        <div class="card-body">
-            <button type="button" class="btn btn-primary" onclick="confirmServiceRequest('{{ request.id }}')"
-                    title="ยืนยันการแจ้งซ่อม">
-                ยืนยันการแจ้งซ่อม
-            </button>
-        </div>
-    </div>
-    {% endif %}
+        {% else %}
+            <p class="text-muted">รอคำแนะนำจากช่าง</p>
+        {% endif %}
     </div>
 </div>
+{% endif %}
+
+            <!-- เพิ่มส่วนบันทึกค่าใช้จ่ายตรงนี้ -->
+            {% if user.user_type == 'service' and request.technician_advice and not request.estimated_cost %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">บันทึกค่าใช้จ่าย</h5>
+                </div>
+                <div class="card-body">
+                    <form id="costForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="estimated_cost" class="form-label">ประมาณการค่าใช้จ่าย (บาท)</label>
+                            <input type="number" id="estimated_cost" class="form-control" required
+                                {% if request.warranty_status == 'in_warranty' %}value="0" readonly{% endif %}>
+                            {% if request.warranty_status == 'in_warranty' %}
+                            <small class="text-success">อยู่ในประกัน ไม่มีค่าใช้จ่าย</small>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="cost_note" class="form-label">หมายเหตุ</label>
+                            <textarea id="cost_note" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="button" onclick="submitServiceCost('{{ request.id }}')" 
+                                class="btn btn-primary">บันทึกค่าใช้จ่าย</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 2. เพิ่มส่วนยืนยันสำหรับฝ่ายบริการ -->
+            {% if user.user_type == 'service' and not request.is_confirmed %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">การยืนยัน</h5>
+                </div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-primary" onclick="confirmServiceRequest('{{ request.id }}')"
+                            title="ยืนยันการแจ้งซ่อม">
+                        ยืนยันการแจ้งซ่อม
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+            </div>
+        </div>
 <!-- เพิ่ม Modal สำหรับดูรูปภาพ -->
 <div class="modal fade" id="imageModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -917,6 +981,41 @@ function confirmCustomerRequest(requestId, isConfirmed) {
     .then(data => {
         if (data.status === 'success') {
             alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาด');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    });
+}
+// เพิ่ม function submitServiceCost
+function submitServiceCost(requestId) {
+    const estimatedCost = document.getElementById('estimated_cost').value;
+    const costNote = document.getElementById('cost_note').value;
+    
+    if (!estimatedCost) {
+        alert('กรุณากรอกค่าใช้จ่าย');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('estimated_cost', estimatedCost);
+    formData.append('cost_note', costNote);
+    
+    fetch(`/service/request/${requestId}/set-cost/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('บันทึกค่าใช้จ่ายเรียบร้อย');
             location.reload();
         } else {
             alert(data.message || 'เกิดข้อผิดพลาด');

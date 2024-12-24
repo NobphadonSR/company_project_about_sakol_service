@@ -27,6 +27,7 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 import io
+from decimal import Decimal
 
 # หน้าแรก
 class HomeView(TemplateView):
@@ -475,12 +476,12 @@ def submit_technician_advice(request, request_id):
         if advice and estimated_cost:
             service_request.technician_advice = advice
             service_request.estimated_cost = estimated_cost
-            service_request.status = 'pending_confirmation'
+            service_request.status = 'advice_given'  # เปลี่ยนสถานะเป็นให้คำปรึกษาแล้ว
             service_request.save()
             
             return JsonResponse({
                 'status': 'success',
-                'message': 'ส่งคำแนะนำเรียบร้อยแล้ว'
+                'message': 'ส่งคำปรึกษาเรียบร้อยแล้ว'
             })
             
     return JsonResponse({
@@ -725,13 +726,13 @@ def confirm_advice(request, pk):
         service_request = get_object_or_404(ServiceRequest, pk=pk)
         
         if request.user == service_request.customer:
-            service_request.status = 'accepted'
+            service_request.status = 'assigned'
             service_request.save()
             
             TechnicianJobStatus.objects.create(
                 service_request=service_request,
                 technician=service_request.technician,
-                status='accepted',
+                status='assigned',
                 notes='ลูกค้ายืนยันคำแนะนำและพร้อมดำเนินการ'
             )
             
@@ -1396,3 +1397,68 @@ def download_template(request):
     )
     response['Content-Disposition'] = 'attachment; filename=service_record_template.xlsx'
     return response
+
+@login_required
+@require_POST
+def set_service_cost(request, request_id):
+    # ตรวจสอบสิทธิ์ผู้ใช้
+    if request.user.user_type != 'service':
+        return JsonResponse({
+            'status': 'error',
+            'message': 'ไม่มีสิทธิ์ดำเนินการ'
+        }, status=403)
+
+    try:
+        service_request = ServiceRequest.objects.get(id=request_id)
+        
+        # ตรวจสอบว่ามีคำปรึกษาจากช่างแล้ว
+        if not service_request.technician_advice:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'ต้องมีคำปรึกษาจากช่างก่อนกำหนดค่าใช้จ่าย'
+            })
+
+        # ดึงข้อมูลจาก request
+        estimated_cost = request.POST.get('estimated_cost')
+        cost_note = request.POST.get('cost_note', '')
+
+        # ตรวจสอบความถูกต้องของข้อมูล
+        try:
+            estimated_cost = Decimal(estimated_cost)
+            if estimated_cost < 0:
+                raise ValueError('ค่าใช้จ่ายต้องไม่ติดลบ')
+        except (TypeError, ValueError):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'ค่าใช้จ่ายไม่ถูกต้อง'
+            })
+
+        # ถ้าอยู่ในประกัน ค่าใช้จ่ายต้องเป็น 0
+        if service_request.warranty_status == 'in_warranty' and estimated_cost > 0:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'งานอยู่ในประกัน ไม่สามารถกำหนดค่าใช้จ่ายได้'
+            })
+
+        # บันทึกข้อมูล
+        service_request.estimated_cost = estimated_cost
+        service_request.cost_note = cost_note
+        service_request.cost_updated_by = request.user
+        service_request.cost_updated_at = timezone.now()
+        service_request.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': 'บันทึกค่าใช้จ่ายเรียบร้อย'
+        })
+
+    except ServiceRequest.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'ไม่พบข้อมูลการแจ้งซ่อม'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'เกิดข้อผิดพลาด: {str(e)}'
+        }, status=500)

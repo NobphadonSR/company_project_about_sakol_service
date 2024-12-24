@@ -14,8 +14,8 @@ class ServiceRequest(models.Model):
     STATUS_CHOICES = [
         ('pending', 'รอดำเนินการ'),
         ('assigned', 'มอบหมายงานแล้ว'),
-        ('pending_advice', 'รอคำแนะนำจากช่าง'),
-        ('advice_given', 'ให้คำแนะนำแล้ว'),
+        ('pending_advice', 'รอคำปรึกษาจากช่าง'),
+        ('advice_given', 'ให้คำปรึกษาแล้ว'),
         ('accepted', 'รับงาน'),
         ('traveling', 'กำลังเดินทาง'),
         ('arrived', 'ถึงจุดหมาย'),
@@ -55,6 +55,23 @@ class ServiceRequest(models.Model):
     customer_confirmed = models.BooleanField(default=False,verbose_name='ลูกค้ายืนยันการดำเนินการ')
     technician_advice = models.TextField(blank=True,null=True,verbose_name='คำแนะนำจากช่าง')
     estimated_cost = models.DecimalField(max_digits=10,decimal_places=2,null=True,blank=True,verbose_name='ประมาณการค่าใช้จ่าย')
+    # เพิ่มฟิลด์ใหม่สำหรับการจัดการค่าใช้จ่าย
+    cost_note = models.TextField(
+        blank=True, 
+        verbose_name="หมายเหตุค่าใช้จ่าย"
+    )
+    cost_updated_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='cost_updates',
+        verbose_name="ผู้กำหนดค่าใช้จ่าย"
+    )
+    cost_updated_at = models.DateTimeField(
+        null=True, 
+        blank=True,
+        verbose_name="วันที่กำหนดค่าใช้จ่าย"
+    )
     service_type = models.CharField(max_length=50, choices=SERVICE_TYPES, null=True, blank=True, verbose_name='ประเภทการซ่อม')
 
     # เพิ่มฟิลด์ใหม่

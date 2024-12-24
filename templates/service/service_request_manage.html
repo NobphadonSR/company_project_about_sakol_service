@@ -139,7 +139,7 @@
                             {% endif %}
                         </td>
                         <!-- แก้ไขส่วนของ <td> ที่แสดงการจัดการ (ในส่วนของ table row) -->
-                        <td onclick="window.location.href='{% url 'service:update_status' request.pk %}'">
+                        <td>
                             <a href="{% url 'service:update_status' request.pk %}" 
                             class="btn btn-sm btn-primary-update">
                                 อัพเดทสถานะ

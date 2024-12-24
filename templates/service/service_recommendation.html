@@ -7,7 +7,7 @@
 {% if user.user_type == 'technician' %}
 <div class="card">
     <div class="card-header">
-        <h5 class="mb-0">ให้คำแนะนำการซ่อม</h5>
+        <h5 class="mb-0">ให้คำปรึกษา</h5>
     </div>
     <div class="card-body">
         <!-- ข้อมูลลูกค้าและรายละเอียดการแจ้ง -->
@@ -36,32 +36,25 @@
         <form method="post" id="recommendationForm">
             {% csrf_token %}
             <div class="mb-3">
-                <label class="form-label">ประเภทการซ่อม</label>
+                <label class="form-label">ประเภทงาน</label>
                 <select name="service_type" class="form-select" required>
-                    <option value="">เลือกประเภทการซ่อม</option>
+                    <option value="">เลือกประเภทงาน</option>
                     <option value="normal">ระบบไฟปกติ</option>
                     <option value="full_checkup">ระบบ Full Check Up</option>
                     <option value="air_flow">ระบบ Air flow/Air Plus</option>
                     <option value="checkup_air_plus">ระบบ Check up Program Air plus</option>
                 </select>
             </div>
-
+        
             <div class="mb-3">
-                <label class="form-label">รายละเอียดการให้คำแนะนำ</label>
+                <label class="form-label">รายละเอียดการให้คำปรึกษา</label>
                 <textarea name="description" class="form-control" rows="4" required></textarea>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">ประมาณการค่าใช้จ่าย (บาท)</label>
-                <input type="number" name="estimated_cost" class="form-control" required 
-                       {% if service_request.warranty_status == 'in_warranty' %}value="0" readonly{% endif %}>
-                {% if service_request.warranty_status == 'in_warranty' %}
-                <small class="text-muted">* งานอยู่ในประกัน ไม่มีค่าใช้จ่าย</small>
-                {% endif %}
-            </div>
-
+        
+            <!-- ลบส่วนประมาณการค่าใช้จ่ายออก -->
+        
             <div class="d-flex justify-content-between">
-                <button type="submit" class="btn btn-primary">ส่งคำแนะนำ</button>
+                <button type="submit" class="btn btn-primary">ส่งคำปรึกษา</button>
                 <a href="{% url 'service:request_detail' service_request.id %}" class="btn btn-secondary">ย้อนกลับ</a>
             </div>
         </form>
