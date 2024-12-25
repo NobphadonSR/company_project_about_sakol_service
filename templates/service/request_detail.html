@@ -11,6 +11,49 @@
                 <h5 class="mb-0">รายละเอียดการแจ้งซ่อม</h5>
             </div>
             <div class="card-body">
+                <!-- เพิ่มส่วนแสดงค่าใช้จ่ายและสถานะประกัน -->
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>ค่าบริการประมาณการ:</strong></div>
+                    <div class="col-md-8">
+                        {% if request.calculated_price %}
+                            {{ request.calculated_price|floatformat:2 }} บาท
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
+        
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>สถานะประกัน:</strong></div>
+                    <div class="col-md-8">
+                        {% if request.warranty_status == 'in_warranty' %}
+                            <span class="badge bg-success">อยู่ในประกัน</span>
+                            {% if request.warranty_end_date %}
+                                <small class="text-muted d-block">
+                                    หมดอายุ: {{ request.warranty_end_date|date:"d/m/Y" }}
+                                </small>
+                            {% endif %}
+                        {% elif request.warranty_status == 'out_of_warranty' %}
+                            <span class="badge bg-danger">หมดประกัน</span>
+                        {% else %}
+                            <span class="badge bg-secondary">ไม่มีข้อมูล</span>
+                        {% endif %}
+                    </div>
+                </div>
+        
+                <!-- เพิ่มส่วนแสดงค่าใช้จ่ายจริง (ถ้ามี) -->
+                {% if request.estimated_cost %}
+                <div class="row mb-3">
+                    <div class="col-md-4"><strong>ค่าใช้จ่ายจริง:</strong></div>
+                    <div class="col-md-8">
+                        {{ request.estimated_cost|floatformat:2 }} บาท
+                        {% if request.cost_note %}
+                            <small class="text-muted d-block">{{ request.cost_note }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="row mb-3">
                     <div class="col-md-4"><strong>ประเภทการบริการ:</strong></div>
                     <div class="col-md-8">{{ request.get_request_type_display }}</div>
@@ -435,39 +478,39 @@
 
         <!-- 1. เพิ่มส่วนแสดงคำแนะนำจากช่างและการยืนยัน -->
         <!-- 1. เพิ่มส่วนแสดงคำแนะนำจากช่างและการยืนยัน -->
-{% if request.need_advice %}
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">คำปรึกษาจากช่าง</h5>
-    </div>
-    <div class="card-body">
-        {% if request.technician_advice %}
-            <div class="mb-3">
-                <strong>คำแนะนำ:</strong>
-                <p>{{ request.technician_advice }}</p>
-            </div>
-            {% if request.estimated_cost %}
-            <div class="mb-3">
-                <strong>ประมาณการค่าใช้จ่าย:</strong>
-                <p>{{ request.estimated_cost|floatformat:2 }} บาท</p>
+            {% if request.need_advice %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">คำปรึกษาจากช่าง</h5>
+                </div>
+                <div class="card-body">
+                    {% if request.technician_advice %}
+                        <div class="mb-3">
+                            <strong>คำแนะนำ:</strong>
+                            <p>{{ request.technician_advice }}</p>
+                        </div>
+                        {% if request.estimated_cost %}
+                        <div class="mb-3">
+                            <strong>ประมาณการค่าใช้จ่าย:</strong>
+                            <p>{{ request.estimated_cost|floatformat:2 }} บาท</p>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- ส่วนปุ่มยืนยันสำหรับลูกค้า -->
+                        {% if user.user_type == 'customer' and not request.customer_confirmed %}
+                        <div class="d-grid gap-2">
+                            <button onclick="confirmCustomerRequest('{{ request.id }}', true)" 
+                                    class="btn btn-success">ยืนยันดำเนินการ</button>
+                            <button onclick="confirmCustomerRequest('{{ request.id }}', false)" 
+                                    class="btn btn-danger">ปฏิเสธ</button>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted">รอคำแนะนำจากช่าง</p>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
-            
-            <!-- ส่วนปุ่มยืนยันสำหรับลูกค้า -->
-            {% if user.user_type == 'customer' and not request.customer_confirmed %}
-            <div class="d-grid gap-2">
-                <button onclick="confirmCustomerRequest('{{ request.id }}', true)" 
-                        class="btn btn-success">ยืนยันดำเนินการ</button>
-                <button onclick="confirmCustomerRequest('{{ request.id }}', false)" 
-                        class="btn btn-danger">ปฏิเสธ</button>
-            </div>
-            {% endif %}
-        {% else %}
-            <p class="text-muted">รอคำแนะนำจากช่าง</p>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
 
             <!-- เพิ่มส่วนบันทึกค่าใช้จ่ายตรงนี้ -->
             {% if user.user_type == 'service' and request.technician_advice and not request.estimated_cost %}
@@ -712,6 +755,30 @@
 #modalDate {
     display: block;
     padding: 0 1rem 1rem;
+}
+/* เพิ่ม CSS สำหรับ badge */
+.badge {
+    padding: 0.5em 0.8em;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.badge.bg-success {
+    background-color: #198754 !important;
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+/* สำหรับข้อความเพิ่มเติมใต้ badge */
+.text-muted.d-block {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
 }
 </style>
 {% endblock %}

@@ -1,21 +1,36 @@
 from django import forms
 from .models import ServiceRequest, ServiceRecord
+from django.utils import timezone
 
 class ServiceRequestForm(forms.ModelForm):
+    # เพิ่มฟิลด์ใหม่
+    warranty_check = forms.BooleanField(
+        required=False,
+        label='ตรวจสอบประกัน',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
     class Meta:
         model = ServiceRequest
         fields = [
             'need_advice',
             'request_type',
+            'service_category',
+            'service_level',
+            'ac_count',
             'description',
             'appointment_date',
             'appointment_time',
+            'warranty_check',  # เพิ่มฟิลด์ใหม่
         ]
-        # ไม่แสดงฟิลด์ warranty ในฟอร์ม เพราะจะจัดการอัตโนมัติ
-        exclude = ['warranty_status', 'warranty_start_date', 'warranty_end_date']
+
+        exclude = ['warranty_status', 'warranty_start_date', 'warranty_end_date', 'calculated_price']
         labels = {
             'need_advice': 'ต้องการคำแนะนำจากช่างก่อนดำเนินการ',
             'request_type': 'ประเภทการบริการ',
+            'service_category': 'ประเภทบริการพิเศษ',
+            'service_level': 'ระดับบริการ',
+            'ac_count': 'จำนวนเครื่องปรับอากาศ',
             'description': 'รายละเอียด',
             'appointment_date': 'วันที่นัดหมาย (ถ้ามี)',
             'appointment_time': 'เวลานัดหมาย (ถ้ามี)',
@@ -24,7 +39,74 @@ class ServiceRequestForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'rows': 4}),
             'appointment_date': forms.DateInput(attrs={'type': 'date'}),
             'appointment_time': forms.TimeInput(attrs={'type': 'time'}),
+            'service_category': forms.Select(attrs={'class': 'form-control'}),
+            'service_level': forms.Select(attrs={'class': 'form-control'}),
+            'ac_count': forms.Select(attrs={'class': 'form-control'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # ทำให้ฟิลด์ใหม่เป็นตัวเลือก
+        optional_fields = ['service_category', 'service_level', 'ac_count']
+        for field in optional_fields:
+            self.fields[field].required = False
+
+        # เพิ่ม class Bootstrap
+        for field in self.fields:
+            if isinstance(self.fields[field].widget, forms.CheckboxInput):
+                continue
+            self.fields[field].widget.attrs.update({
+                'class': 'form-control'
+            })
+
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # เพิ่มการตรวจสอบวันและเวลานัดหมาย
+        appointment_date = cleaned_data.get('appointment_date')
+        appointment_time = cleaned_data.get('appointment_time')
+
+        if appointment_date and appointment_time:
+            # ตรวจสอบว่าเป็นเวลาทำการหรือไม่ (8:00-17:00)
+            if not (8 <= appointment_time.hour < 17):
+                raise forms.ValidationError(
+                    'กรุณาเลือกเวลานัดหมายระหว่าง 8:00-17:00 น.'
+                )
+                
+            # ตรวจสอบว่าไม่ใช่วันในอดีต
+            if appointment_date < timezone.now().date():
+                raise forms.ValidationError(
+                    'ไม่สามารถเลือกวันที่ในอดีตได้'
+                )
+
+        # ตรวจสอบการเลือกประเภทบริการ
+        service_category = cleaned_data.get('service_category')
+        service_level = cleaned_data.get('service_level')
+        ac_count = cleaned_data.get('ac_count')
+
+        if service_category:
+            if not service_level:
+                raise forms.ValidationError('กรุณาเลือกระดับบริการ')
+            
+            if service_category == 'AIRPLUS' and not ac_count:
+                raise forms.ValidationError('กรุณาระบุจำนวนเครื่องปรับอากาศ')
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        # คำนวณราคาอัตโนมัติถ้ามีการเลือกประเภทบริการ
+        if instance.service_category:
+            instance.calculated_price = instance.calculate_service_fee()
+            
+        # ตรวจสอบสถานะประกันถ้ามีการเลือก
+        if self.cleaned_data.get('warranty_check'):
+            instance.check_warranty_status()
+            
+        if commit:
+            instance.save()
+        return instance
 
 class ServiceRecordForm(forms.ModelForm):
     class Meta:

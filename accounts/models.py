@@ -14,9 +14,30 @@ class User(AbstractUser):
     profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
 
 class Customer(models.Model):
+    PROJECT_CATEGORIES = [
+        ('SMALL', 'บ้านหลังเล็ก'),
+        ('LARGE', 'บ้านหลังใหญ่')
+    ]
+    
+    PROJECT_TYPES = [
+        ('MANTANA', 'มัณฑนา'),
+        ('PRUKLADA', 'พฤกษ์ลดา'),
+        ('INIZIO', 'INIZIO'),
+        ('VILLAGGIO', 'Villaggio'),
+        ('SIVALI', 'สีวลี'),
+        ('CHAIYAPRUEK', 'ชัยพฤกษ์'),
+        ('VIVE', 'VIVE'),
+        ('NANTAWAN', 'นันทวัน'),
+        ('LADAWAN', 'ลดาวัลย์'),
+        ('OTHER', 'อื่นๆ')
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     project_name = models.CharField(max_length=100, verbose_name="ชื่อโครงการ")
     house_number = models.CharField(max_length=50, verbose_name="บ้านเลขที่")
+    # เพิ่มฟิลด์ใหม่
+    project_type = models.CharField(max_length=20, choices=PROJECT_TYPES, default='OTHER', verbose_name="ประเภทโครงการ")
+    project_category = models.CharField(max_length=10, choices=PROJECT_CATEGORIES, default='OTHER', verbose_name="ขนาดบ้าน")
     phone = models.CharField(max_length=15, verbose_name="เบอร์โทร")
     customer_name = models.CharField(max_length=100, verbose_name="ชื่อลูกค้า")
     # ลบ location ที่เป็น TextField ออก เพราะซ้ำซ้อนกับ CharField

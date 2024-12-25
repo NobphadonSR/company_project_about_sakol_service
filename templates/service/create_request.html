@@ -114,6 +114,50 @@
     .form-check {
         margin-bottom: 8px;
     }
+    /* เพิ่ม CSS สำหรับฟิลด์ใหม่ */
+    .service-options {
+        display: none;
+    }
+    
+    .service-options.active {
+        display: block;
+    }
+    
+    .price-display {
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: #084298;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        text-align: right;
+    }
+    #serviceInfoDisplay {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+
+    .warranty-info {
+        padding: 0.5rem 0;
+    }
+
+    #warrantyStatus.in-warranty {
+        color: #198754;
+        font-weight: 500;
+    }
+
+    #warrantyStatus.out-warranty {
+        color: #dc3545;
+        font-weight: 500;
+    }
+
+    #priceNote {
+        color: #0d6efd;
+        font-style: italic;
+    }
 </style>
 {% endblock %}
 
@@ -124,9 +168,6 @@
             <div class="card-header">
                 <h5 class="mb-0">แจ้งซ่อมใหม่</h5>
             </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
                     <div class="card-body">
                         <form method="post">
                             {% csrf_token %}
@@ -142,7 +183,73 @@
                                     </label>
                                 </div>  
                             </div>
-                    
+                            
+                            <!-- เพิ่มฟิลด์ใหม่ -->
+                            <div class="mb-4">
+                                <label for="id_service_category" class="form-label">{{ form.service_category.label }}</label>
+                                <select name="service_category" id="id_service_category" class="form-control">
+                                    <option value="">เลือกประเภทบริการ</option>
+                                    {% for value, label in form.fields.service_category.choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div id="serviceLevelContainer" class="mb-4 service-options">
+                                <label for="id_service_level" class="form-label">{{ form.service_level.label }}</label>
+                                <select name="service_level" id="id_service_level" class="form-control">
+                                    <option value="">เลือกระดับบริการ</option>
+                                    {% for value, label in form.fields.service_level.choices %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div id="acCountContainer" class="mb-4 service-options">
+                                <label for="id_ac_count" class="form-label">{{ form.ac_count.label }}</label>
+                                <input type="number" name="ac_count" id="id_ac_count" class="form-control" min="1">
+                            </div>
+
+                            <!-- แสดงราคาประเมิน -->
+                            <div id="priceDisplay" class="price-display" style="display: none;">
+                                ราคาประเมิน: <span id="calculatedPrice">0</span> บาท
+                            </div>
+
+                            <!-- เพิ่มหลังจาก price-display -->
+                            <div class="card mb-4" id="serviceInfoDisplay">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="mb-3">ประมาณการค่าบริการ</h6>
+                                            <div class="price-info">
+                                                <p class="mb-2">ราคาประมาณการ: <span class="calculated-price">0</span> บาท</p>
+                                                <small class="text-muted" id="priceNote"></small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="mb-3">สถานะประกัน</h6>
+                                            <div class="warranty-info">
+                                                <p class="mb-2">สถานะ: <span id="warrantyStatus">-</span></p>
+                                                <p class="mb-0" id="warrantyDays"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- เพิ่มช่องทำเครื่องหมายตรวจสอบประกัน -->
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input type="checkbox" 
+                                        name="warranty_check" 
+                                        id="id_warranty_check" 
+                                        class="form-check-input">
+                                    <label for="id_warranty_check" class="form-check-label">
+                                        ตรวจสอบประกัน
+                                    </label>
+                                </div>
+                            </div>
+
                             <!-- แก้ไข loop โดยเพิ่มเงื่อนไขข้าม field need_advice -->
                             {% for field in form %}
                                 {% if field.name != 'need_advice' %}
@@ -213,6 +320,115 @@ document.getElementById('id_need_advice').addEventListener('change', function() 
         submitBtn.textContent = 'ขอคำแนะนำจากช่าง';
     } else {
         submitBtn.textContent = 'บันทึก';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const serviceCategory = document.getElementById('id_service_category');
+    const serviceLevel = document.getElementById('id_service_level');
+    const acCount = document.getElementById('id_ac_count');
+    const serviceLevelContainer = document.getElementById('serviceLevelContainer');
+    const acCountContainer = document.getElementById('acCountContainer');
+    const priceDisplay = document.getElementById('priceDisplay');
+    const calculatedPrice = document.getElementById('calculatedPrice');
+    const warrantyCheck = document.getElementById('id_warranty_check');
+    const warrantyStatus = document.getElementById('warrantyStatus');
+    const warrantyDays = document.getElementById('warrantyDays');
+    const serviceInfoDisplay = document.getElementById('serviceInfoDisplay');
+
+    // ซ่อน serviceInfoDisplay เมื่อโหลดหน้าแรก
+    serviceInfoDisplay.style.display = 'none';
+
+    // เพิ่มการตรวจสอบประกัน
+    warrantyCheck.addEventListener('change', function() {
+        if (this.checked) {
+            fetch('/service/check-warranty/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                body: JSON.stringify({
+                    customer_id: document.getElementById('id_customer').value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    warrantyStatus.textContent = data.warranty_status === 'in_warranty' ? 'อยู่ในประกัน' : 'หมดประกัน';
+                    warrantyDays.textContent = `เหลือเวลาประกัน: ${data.remaining_days} วัน`;
+                    serviceInfoDisplay.style.display = 'block';
+                    
+                    // ถ้าอยู่ในประกัน ให้แสดงข้อความเพิ่มเติม
+                    if (data.warranty_status === 'in_warranty') {
+                        document.getElementById('priceNote').textContent = 'งานอยู่ในประกัน ไม่มีค่าใช้จ่าย';
+                        calculatedPrice.textContent = '0';
+                    }
+                }
+            });
+        } else {
+            warrantyStatus.textContent = '-';
+            warrantyDays.textContent = '';
+            calculatePrice(); // คำนวณราคาใหม่
+        }
+    });
+
+    // จัดการการแสดง/ซ่อนฟิลด์
+    serviceCategory.addEventListener('change', function() {
+        const selectedCategory = this.value;
+        
+        if (selectedCategory) {
+            serviceLevelContainer.classList.add('active');
+            if (selectedCategory === 'AIRPLUS') {
+                acCountContainer.classList.add('active');
+            } else {
+                acCountContainer.classList.remove('active');
+                acCount.value = '';
+            }
+        } else {
+            serviceLevelContainer.classList.remove('active');
+            acCountContainer.classList.remove('active');
+            serviceLevel.value = '';
+            acCount.value = '';
+        }
+        
+        calculatePrice();
+    });
+
+    // คำนวณราคาเมื่อมีการเปลี่ยนแปลงค่า
+    [serviceLevel, acCount].forEach(element => {
+        element.addEventListener('change', calculatePrice);
+    });
+
+    // ปรับปรุงฟังก์ชัน calculatePrice
+    function calculatePrice() {
+        const category = serviceCategory.value;
+        const level = serviceLevel.value;
+        const count = parseInt(acCount.value) || 0;
+        
+        let price = 0;
+        
+        if (category && level) {
+            // คำนวณราคาตามปกติ
+            if (category === 'AIRPLUS') {
+                const basePrice = level === 'PREMIUM' ? 1500 : 1000;
+                price = basePrice * count;
+            } else if (category === 'ELECTRIC') {
+                price = level === 'PREMIUM' ? 2500 : 1500;
+            }
+            
+            // ถ้าอยู่ในประกันและมีการเช็ค warranty
+            if (warrantyCheck.checked && warrantyStatus.textContent === 'อยู่ในประกัน') {
+                price = 0;
+                document.getElementById('priceNote').textContent = 'งานอยู่ในประกัน ไม่มีค่าใช้จ่าย';
+            } else {
+                document.getElementById('priceNote').textContent = '';
+            }
+            
+            serviceInfoDisplay.style.display = 'block';
+            calculatedPrice.textContent = price.toLocaleString();
+        } else {
+            serviceInfoDisplay.style.display = 'none';
+        }
     }
 });
 </script>

@@ -39,6 +39,24 @@ class ServiceRequest(models.Model):
         ('checkup_air_plus', 'ระบบ Check up Program Air plus'),
     ]
 
+
+    # เพิ่ม choices ใหม่ต่อจาก SERVICE_TYPES
+    SERVICE_CATEGORIES = [
+        ('ELECTRICAL', 'ตู้ไฟ'),
+        ('AIRPLUS', 'Air Plus'),
+        ('OTHER', 'บริการอื่นๆ')
+    ]
+    
+    SERVICE_LEVELS = [
+        ('NORMAL', 'บริการแบบปกติ'),
+        ('FULL', 'บริการแบบ Full Check up')
+    ]
+    
+    AC_UNITS = [
+        (1, '1 เครื่อง'),
+        (2, '2 เครื่อง')
+    ]
+
     customer = models.ForeignKey('accounts.Customer', on_delete=models.CASCADE, related_name='service_requests')
     request_type = models.CharField(max_length=20, choices=REQUEST_TYPES)
     technician = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requests')
@@ -78,22 +96,126 @@ class ServiceRequest(models.Model):
     warranty_start_date = models.DateField(null=True, blank=True, verbose_name='วันที่เริ่มประกัน')
     warranty_end_date = models.DateField(null=True, blank=True, verbose_name='วันที่สิ้นสุดประกัน')
 
+    # เพิ่มฟิลด์ใหม่ต่อจากฟิลด์เดิม
+    service_category = models.CharField(
+        max_length=20, 
+        choices=SERVICE_CATEGORIES,
+        null=True,
+        blank=True,
+        verbose_name="ประเภทบริการ"
+    )
+    service_level = models.CharField(
+        max_length=10, 
+        choices=SERVICE_LEVELS,
+        null=True,
+        blank=True,
+        verbose_name="ระดับบริการ"
+    )
+    ac_count = models.IntegerField(
+        choices=AC_UNITS,
+        null=True,
+        blank=True,
+        verbose_name="จำนวนเครื่องปรับอากาศ"
+    )
+    calculated_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="ราคาประเมิน"
+    )
+
+    def check_warranty_status(self):
+        """ตรวจสอบสถานะประกันอัตโนมัติ"""
+        today = timezone.now().date()
+        
+        if not self.warranty_start_date or not self.warranty_end_date:
+            self.warranty_status = 'pending_warranty'
+            return
+            
+        if today <= self.warranty_end_date:
+            self.warranty_status = 'in_warranty'
+        else:
+            self.warranty_status = 'out_of_warranty'
+        self.save()
+
+    @property
+    def remaining_warranty_days(self):
+        """คำนวณจำนวนวันประกันที่เหลือ"""
+        if not self.warranty_end_date:
+            return 0
+            
+        today = timezone.now().date()
+        if today > self.warranty_end_date:
+            return 0
+            
+        return (self.warranty_end_date - today).days
+
+    def check_appointment_conflict(self, date, time):
+        """ตรวจสอบการซ้ำซ้อนของการนัดหมาย"""
+        if not self.technician:
+            return False
+            
+        conflicts = ServiceRequest.objects.filter(
+            technician=self.technician,
+            appointment_date=date,
+            appointment_time=time
+        ).exclude(id=self.id)
+        
+        return conflicts.exists()
+
+    def calculate_service_fee(self):
+        """คำนวณค่าบริการตามประเภทงาน"""
+        if not self.service_type:
+            return 0
+            
+        base_fee = {
+            'normal': 500,
+            'full_checkup': 1500,
+            'air_flow': 2000,
+            'checkup_air_plus': 2500
+        }.get(self.service_type, 0)
+        
+        # เพิ่มค่าบริการตามจำนวนเครื่อง
+        if self.ac_count:
+            base_fee *= self.ac_count
+            
+        return base_fee
+
+    def is_within_service_hours(self, time):
+        """ตรวจสอบว่าอยู่ในเวลาทำการหรือไม่"""
+        if not time:
+            return True
+            
+        # กำหนดเวลาทำการ 8:00-17:00
+        service_start = time.replace(hour=8, minute=0)
+        service_end = time.replace(hour=17, minute=0)
+        
+        return service_start <= time <= service_end
+
+    # แก้ไขเมธอด save() เดิม
     def save(self, *args, **kwargs):
+        # คำนวณราคาอัตโนมัติเมื่อมีการบันทึก
+        if self.service_category:
+            self.calculated_price = self.calculate_service_price()
+        
         # ตรวจสอบว่าเป็นการซื้ออะไหล่ใหม่หรือไม่
         if self.request_type in ['install', 'all_in'] and not self.warranty_start_date:
-            # ตั้งค่าวันที่เริ่มประกันเป็นวันที่ปัจจุบัน
             self.warranty_start_date = timezone.now().date()
-            # ตั้งค่าวันที่สิ้นสุดประกันเป็น 1 ปีนับจากวันที่เริ่ม
             self.warranty_end_date = self.warranty_start_date + timedelta(days=365)
-            # ตั้งค่าสถานะประกัน
             self.warranty_status = 'in_warranty'
         
         # ตรวจสอบสถานะประกัน
-        if self.warranty_end_date:
-            if timezone.now().date() <= self.warranty_end_date:
-                self.warranty_status = 'in_warranty'
-            else:
-                self.warranty_status = 'out_of_warranty'
+        self.check_warranty_status()
+        
+        # ตรวจสอบการนัดหมาย
+        if self.appointment_date and self.appointment_time:
+            if self.check_appointment_conflict(self.appointment_date, self.appointment_time):
+                raise ValidationError('มีการนัดหมายซ้ำซ้อนกับช่างท่านนี้')
+            
+            # ตรวจสอบเวลาทำการ
+            if not self.is_within_service_hours(self.appointment_time):
+                raise ValidationError('เวลานัดหมายต้องอยู่ในช่วง 8:00-17:00 น.')
 
         super().save(*args, **kwargs)
 

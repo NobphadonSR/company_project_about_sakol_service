@@ -148,43 +148,34 @@ class CustomerMapView(LoginRequiredMixin, TemplateView):
     def post(self, request, *args, **kwargs):
         if request.user.user_type == 'customer':
             try:
-                customer = request.user.customer
-                
                 # รับค่าและตรวจสอบความถูกต้อง
-                lat = request.POST.get('latitude', '').strip()
-                lng = request.POST.get('longitude', '').strip()
-                location = request.POST.get('location', '').strip()
-                
-                # ตรวจสอบว่ามีค่าพิกัดหรือไม่
-                if lat and lng:
-                    try:
-                        # เก็บค่าเดิมไว้เพื่อเช็คการเปลี่ยนแปลง
-                        lat = customer.latitude
-                        lng = customer.longitude
-                        location = customer.location
+                latitude = request.POST.get('latitude')
+                longitude = request.POST.get('longitude')
+                location = request.POST.get('location')
 
-                        # แปลงค่าเป็น Decimal
-                        customer.latitude = Decimal(lat)
-                        customer.longitude = Decimal(lng)
-                        customer.location = location
-                        
-                        # บันทึกข้อมูล
-                        customer.save()
-                        
-                        return JsonResponse({
-                            'status': 'success',
-                            'message': 'บันทึกที่อยู่เรียบร้อยแล้ว',
-                            'updates_count': customer.location_updates_count
-                        })
-                    except (ValueError, InvalidOperation, TypeError) as e:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': f'รูปแบบพิกัดไม่ถูกต้อง: {str(e)}'
-                        }, status=400)
-                else:
+                if not latitude or not longitude:
                     return JsonResponse({
                         'status': 'error',
-                        'message': 'กรุณาระบุพิกัด'
+                        'message': 'กรุณาเลือกตำแหน่งบนแผนที่'
+                    }, status=400)
+
+                try:
+                    # แปลงค่าเป็น Decimal
+                    customer = request.user.customer
+                    customer.latitude = Decimal(str(latitude))
+                    customer.longitude = Decimal(str(longitude))
+                    customer.location = location
+                    customer.save()
+
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'บันทึกตำแหน่งเรียบร้อยแล้ว'
+                    })
+
+                except (ValueError, TypeError) as e:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': f'รูปแบบพิกัดไม่ถูกต้อง: {str(e)}'
                     }, status=400)
                     
             except Exception as e:

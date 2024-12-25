@@ -137,9 +137,17 @@
             marker.remove();
         }
         
+        // ตรวจสอบค่าพิกัด
+        if (!lat || !lng) {
+            alert('กรุณาเลือกตำแหน่งบนแผนที่');
+            return;
+        }
+        
         marker = L.marker([lat, lng]).addTo(map);
-        document.getElementById('latitude').value = lat;
-        document.getElementById('longitude').value = lng;
+        
+        // กำหนดค่าพิกัดให้กับ input fields
+        document.getElementById('latitude').value = parseFloat(lat).toFixed(6);
+        document.getElementById('longitude').value = parseFloat(lng).toFixed(6);
         
         // ดึงที่อยู่จากพิกัด
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
@@ -150,6 +158,17 @@
                 document.getElementById('location').value = address;
             });
     }
+
+    // เพิ่มการตรวจสอบก่อนส่งฟอร์ม
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const lat = document.getElementById('latitude').value;
+        const lng = document.getElementById('longitude').value;
+        
+        if (!lat || !lng) {
+            e.preventDefault();
+            alert('กรุณาเลือกตำแหน่งบนแผนที่');
+        }
+    });
     
     function getCurrentLocation() {
         if (navigator.geolocation) {

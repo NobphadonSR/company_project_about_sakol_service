@@ -106,7 +106,24 @@ class CreateServiceRequestView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.customer = self.request.user.customer
+        
+        # คำนวณราคาอัตโนมัติถ้ามีการเลือกประเภทบริการ
+        if form.instance.service_category:
+            form.instance.calculated_price = form.instance.calculate_service_price()
+            
         return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.customer:
+            context['project_type'] = self.request.user.customer.project_type
+        return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.user.customer:
+            kwargs['initial'] = {'customer': self.request.user.customer}
+        return kwargs
 
 # ดูรายการงาน
 class ServiceRequestListView(LoginRequiredMixin, ListView):
@@ -1398,10 +1415,31 @@ def download_template(request):
     response['Content-Disposition'] = 'attachment; filename=service_record_template.xlsx'
     return response
 
+# เพิ่มเมธอดใหม่สำหรับจัดการการคำนวณราคา
+def calculate_service_fee(request, service_id):
+    if request.user.user_type != 'service':
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+    
+    service_request = get_object_or_404(ServiceRequest, id=service_id)
+    
+    try:
+        # เรียกใช้เมธอด calculate_service_fee จาก model
+        fee = service_request.calculate_service_fee()
+        
+        return JsonResponse({
+            'status': 'success',
+            'fee': str(fee)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+# แก้ไขเมธอด set_service_cost เดิม
 @login_required
 @require_POST
 def set_service_cost(request, request_id):
-    # ตรวจสอบสิทธิ์ผู้ใช้
     if request.user.user_type != 'service':
         return JsonResponse({
             'status': 'error',
@@ -1411,36 +1449,19 @@ def set_service_cost(request, request_id):
     try:
         service_request = ServiceRequest.objects.get(id=request_id)
         
-        # ตรวจสอบว่ามีคำปรึกษาจากช่างแล้ว
-        if not service_request.technician_advice:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'ต้องมีคำปรึกษาจากช่างก่อนกำหนดค่าใช้จ่าย'
-            })
+        # ตรวจสอบสถานะประกันก่อนกำหนดค่าใช้จ่าย
+        service_request.check_warranty_status()
+        
+        if service_request.warranty_status == 'in_warranty':
+            estimated_cost = Decimal('0.00')
+            cost_note = 'งานอยู่ในประกัน'
+        else:
+            estimated_cost = Decimal(request.POST.get('estimated_cost', '0'))
+            cost_note = request.POST.get('cost_note', '')
 
-        # ดึงข้อมูลจาก request
-        estimated_cost = request.POST.get('estimated_cost')
-        cost_note = request.POST.get('cost_note', '')
+        if estimated_cost < 0:
+            raise ValueError('ค่าใช้จ่ายต้องไม่ติดลบ')
 
-        # ตรวจสอบความถูกต้องของข้อมูล
-        try:
-            estimated_cost = Decimal(estimated_cost)
-            if estimated_cost < 0:
-                raise ValueError('ค่าใช้จ่ายต้องไม่ติดลบ')
-        except (TypeError, ValueError):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'ค่าใช้จ่ายไม่ถูกต้อง'
-            })
-
-        # ถ้าอยู่ในประกัน ค่าใช้จ่ายต้องเป็น 0
-        if service_request.warranty_status == 'in_warranty' and estimated_cost > 0:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'งานอยู่ในประกัน ไม่สามารถกำหนดค่าใช้จ่ายได้'
-            })
-
-        # บันทึกข้อมูล
         service_request.estimated_cost = estimated_cost
         service_request.cost_note = cost_note
         service_request.cost_updated_by = request.user
@@ -1449,16 +1470,13 @@ def set_service_cost(request, request_id):
 
         return JsonResponse({
             'status': 'success',
-            'message': 'บันทึกค่าใช้จ่ายเรียบร้อย'
+            'message': 'บันทึกค่าใช้จ่ายเรียบร้อย',
+            'estimated_cost': str(estimated_cost),
+            'warranty_status': service_request.warranty_status
         })
 
-    except ServiceRequest.DoesNotExist:
+    except (ServiceRequest.DoesNotExist, ValueError) as e:
         return JsonResponse({
             'status': 'error',
-            'message': 'ไม่พบข้อมูลการแจ้งซ่อม'
-        }, status=404)
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': f'เกิดข้อผิดพลาด: {str(e)}'
-        }, status=500)
+            'message': str(e)
+        }, status=400)

@@ -51,8 +51,14 @@
                 <textarea name="description" class="form-control" rows="4" required></textarea>
             </div>
         
-            <!-- ลบส่วนประมาณการค่าใช้จ่ายออก -->
-        
+            <!-- เพิ่มส่วนแสดงราคาอัตโนมัติ -->
+            <div class="mb-3" id="autoCalculatedPrice" style="display: none;">
+                <div class="alert alert-info">
+                    <h6>ราคาประมาณการอัตโนมัติ</h6>
+                    <p class="mb-0">ค่าบริการ: <span id="calculatedServiceFee">0</span> บาท</p>
+                </div>
+            </div>
+
             <div class="d-flex justify-content-between">
                 <button type="submit" class="btn btn-primary">ส่งคำปรึกษา</button>
                 <a href="{% url 'service:request_detail' service_request.id %}" class="btn btn-secondary">ย้อนกลับ</a>
@@ -88,6 +94,21 @@ document.getElementById('recommendationForm').addEventListener('submit', functio
         console.error('Error:', error);
         alert('เกิดข้อผิดพลาดในการส่งคำแนะนำ');
     });
+});
+document.querySelector('select[name="service_type"]').addEventListener('change', function() {
+    const serviceType = this.value;
+    if (serviceType) {
+        fetch(`/service/calculate-fee/${serviceRequestId}/?service_type=${serviceType}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('calculatedServiceFee').textContent = data.fee;
+                    document.getElementById('autoCalculatedPrice').style.display = 'block';
+                }
+            });
+    } else {
+        document.getElementById('autoCalculatedPrice').style.display = 'none';
+    }
 });
 </script>
 {% endblock %}
