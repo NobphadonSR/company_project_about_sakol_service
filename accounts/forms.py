@@ -27,9 +27,6 @@ class CustomerRegistrationForm(UserCreationForm):
                 location=self.cleaned_data['location']
             )
         return user
-    
-from django import forms
-from .models import Customer
 
 class CustomerForm(forms.ModelForm):
     class Meta:
