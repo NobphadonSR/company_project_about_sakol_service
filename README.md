@@ -17,7 +17,7 @@
 - **Database:** PostgreSQL
 - **Frontend:** Bootstrap 5
 - **Form Handling:** Crispy Forms
-- **Maps Integration:** Google Maps API
+- **Maps Integration:** Google Maps API, Leaflet and OpenStreetMap
 - **File Upload:** Django File Upload System
 
 ## การติดตั้ง
