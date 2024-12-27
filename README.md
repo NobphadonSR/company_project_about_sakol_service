@@ -23,33 +23,34 @@
 ## การติดตั้ง
 
 1. สร้าง Virtual Environment:
-    (python -m venv venv
-    source venv/bin/activate # สำหรับ Linux/Mac
-    venv\Scripts\activate # สำหรับ Windows)
+    `python -m venv venv`
+    `source venv/bin/activate # สำหรับ Linux/Mac`
+    `venv\Scripts\activate # สำหรับ Windows`
 
 2. ติดตั้ง Dependencies:
-    (pip install -r requirements.txt)
+    `pip install -r requirements.txt`
 
 3. ตั้งค่าฐานข้อมูล PostgreSQL:
-    (createdb electrical_crm_db)
+    `createdb electrical_crm_db`
 
 4. ทำการ Migrate ฐานข้อมูล:
-    (python manage.py migrate)
+    `python manage.py migrate`
 
 5. สร้าง Superuser:
-    (python manage.py createsuperuser)
+    `python manage.py createsuperuser`
 
 6. รัน Development Server:
-    (python manage.py runserver)
+    `python manage.py runserver`
 
 ## โครงสร้างโปรเจกต์
-electrical_crm/
+
+`electrical_crm/`
 ├── accounts/            # แอพจัดการผู้ใช้งาน
 ├── service/            # แอพจัดการงานบริการ
 ├── static/            # ไฟล์ static (CSS, JS, Images)
 ├── media/             # ไฟล์ที่ผู้ใช้อัพโหลด
 ├── templates/         # เทมเพลตหลัก
-└── electrical_crm/    # การตั้งค่าหลักของโปรเจกต์
+├── electrical_crm/    # การตั้งค่าหลักของโปรเจกต์
 
 ## การตั้งค่าสำคัญ
 
