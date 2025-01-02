@@ -47,11 +47,15 @@ class CustomerForm(forms.ModelForm):
             'house_number', 
             'phone', 
             'location',
-            'project_type',  # เพิ่มฟิลด์ใหม่
-            'project_category'  # เพิ่มฟิลด์ใหม่
+            'project_type',
+            'project_category',
+            'warranty_status',
+            'warranty_expiry_date'
         ]
         widgets = {
             'location': forms.Textarea(attrs={'rows': 3}),
             'project_type': forms.Select(attrs={'class': 'form-control'}),
-            'project_category': forms.Select(attrs={'class': 'form-control'})
+            'project_category': forms.Select(attrs={'class': 'form-control'}),
+            'warranty_status': forms.Select(attrs={'class': 'form-control', 'disabled': 'disabled'}),
+            'warranty_expiry_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'disabled': 'disabled'})
         }

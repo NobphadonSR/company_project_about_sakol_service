@@ -109,7 +109,7 @@ class CreateServiceRequestView(LoginRequiredMixin, CreateView):
         
         # คำนวณราคาอัตโนมัติถ้ามีการเลือกประเภทบริการ
         if form.instance.service_category:
-            form.instance.calculated_price = form.instance.calculate_service_price()
+            form.instance.calculated_price = form.instance.calculate_service_fee()
             
         return super().form_valid(form)
 
@@ -1004,6 +1004,14 @@ def manage_warranty(request, pk):
             if action == 'set_warranty':
                 # แปลงวันที่จาก string เป็น date object
                 start_date = datetime.strptime(warranty_date, '%Y-%m-%d').date() if warranty_date else None
+                
+                # อัพเดทข้อมูลประกันของลูกค้า
+                customer = service_request.customer
+                customer.warranty_status = 'ACTIVE'
+                customer.warranty_expiry_date = start_date + timedelta(days=365) if start_date else None
+                customer.save()
+                
+                # อัพเดทข้อมูลประกันของ service request
                 service_request.set_warranty(start_date)
                 
                 return JsonResponse({
@@ -1014,6 +1022,13 @@ def manage_warranty(request, pk):
                 })
             
             elif action == 'remove_warranty':
+                # อัพเดทข้อมูลประกันของลูกค้า
+                customer = service_request.customer
+                customer.warranty_status = 'NONE'
+                customer.warranty_expiry_date = None
+                customer.save()
+                
+                # อัพเดทข้อมูลประกันของ service request
                 service_request.warranty_status = 'out_of_warranty'
                 service_request.warranty_start_date = None
                 service_request.warranty_end_date = None

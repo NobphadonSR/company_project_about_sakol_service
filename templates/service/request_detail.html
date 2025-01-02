@@ -26,17 +26,17 @@
                 <div class="row mb-3">
                     <div class="col-md-4"><strong>สถานะประกัน:</strong></div>
                     <div class="col-md-8">
-                        {% if request.warranty_status == 'in_warranty' %}
+                        {% if request.customer.warranty_status == 'ACTIVE' %}
                             <span class="badge bg-success">อยู่ในประกัน</span>
-                            {% if request.warranty_end_date %}
+                            {% if request.customer.warranty_expiry_date %}
                                 <small class="text-muted d-block">
-                                    หมดอายุ: {{ request.warranty_end_date|date:"d/m/Y" }}
+                                    วันหมดประกัน: {{ request.customer.warranty_expiry_date|date:"d/m/Y" }}
                                 </small>
                             {% endif %}
-                        {% elif request.warranty_status == 'out_of_warranty' %}
+                        {% elif request.customer.warranty_status == 'EXPIRED' %}
                             <span class="badge bg-danger">หมดประกัน</span>
                         {% else %}
-                            <span class="badge bg-secondary">ไม่มีข้อมูล</span>
+                            <span class="badge bg-secondary">ไม่มีประกัน</span>
                         {% endif %}
                     </div>
                 </div>
@@ -83,16 +83,24 @@
                     <div class="col-md-8">{{ request.created_at|date:"d/m/Y H:i" }}</div>
                 </div>
                 <!-- เพิ่มในส่วนแสดงรายละเอียด -->
-                <div class="mb-3">
+                <!--<div class="row mb-3">
                     <div class="col-md-4"><strong>สถานะประกัน:</strong></div>
                     <div class="col-md-8">
-                    {% if request.warranty_status == 'in_warranty' %}
-                        <span class="badge bg-success">อยู่ในประกัน</span>
-                    {% elif request.warranty_status == 'out_of_warranty' %}
-                        <span class="badge bg-danger">ไม่อยู่ในประกัน</span>
-                    {% endif %}
+                        {% if request.warranty_status == 'in_warranty' %}
+                            <span class="badge bg-success">อยู่ในประกัน</span>
+                            {% if request.warranty_end_date %}
+                                <small class="text-muted d-block">
+                                    วันที่เริ่มประกัน: {{ request.warranty_start_date|date:"d/m/Y" }}<br>
+                                    วันที่หมดประกัน: {{ request.warranty_end_date|date:"d/m/Y" }}
+                                </small>
+                            {% endif %}
+                        {% elif request.warranty_status == 'out_of_warranty' %}
+                            <span class="badge bg-danger">ไม่อยู่ในประกัน</span>
+                        {% else %}
+                            <span class="badge bg-warning">รอตรวจสอบ</span>
+                        {% endif %}
                     </div>
-                </div>
+                </div>-->
             </div>
         </div>
 
@@ -325,12 +333,12 @@
                 <!-- ปุ่มสำหรับยกเลิกและเลื่อนนัด -->
                 <div class="d-flex gap-2 mb-3">
                     <button type="button" class="btn btn-danger" onclick="cancelRequest('{{ request.id }}')"
-                    {% if request.status in 'completed_cash,completed_call,cancelled' %}disabled{% endif %}>
+                    {% if request.status in 'completed_cash,completed_call,cancelled,confirmed' %}disabled{% endif %}>
                 ยกเลิกนัด
             </button>
             
             <button type="button" class="btn btn-warning" onclick="showRescheduleForm()"
-                    {% if request.status in 'completed_cash,completed_call,cancelled' %}disabled{% endif %}>
+                    {% if request.status in 'completed_cash,completed_call,cancelled,confirmed' %}disabled{% endif %}>
                         เลื่อนนัด
                     </button>
                 </div>
@@ -523,8 +531,8 @@
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="estimated_cost" class="form-label">ประมาณการค่าใช้จ่าย (บาท)</label>
-                            <input type="number" id="estimated_cost" class="form-control" required
-                                {% if request.warranty_status == 'in_warranty' %}value="0" readonly{% endif %}>
+                            <input type="number" id="estimated_cost" class="form-control" required min="0"
+                                {% if request.warranty_status == 'in_warranty' %}value="0"{% endif %}>
                             {% if request.warranty_status == 'in_warranty' %}
                             <small class="text-success">อยู่ในประกัน ไม่มีค่าใช้จ่าย</small>
                             {% endif %}

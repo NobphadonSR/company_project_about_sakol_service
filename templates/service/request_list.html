@@ -68,20 +68,18 @@
                         <th>ประเภท</th>
                         <th>สถานะ</th>
                         <th>สถานะประกัน</th>
-                        <!--<th>การดำเนินการ</th>-->
                     </tr>
                 </thead>
                 <tbody>
                     {% for request in requests %}
-                    <tr>
-                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.id }}</td>
-                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.created_at|date:"d/m/Y" }}</td>
-                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.appointment_date|date:"d/m/Y" }}</td>
-                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.appointment_time }}</td>
-                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.description }}</td>
-                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">{{ request.get_request_type_display }}</td>
-                        <!-- แก้ไขส่วนแสดงสถานะ -->
-                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">
+                    <tr style="cursor: pointer;" onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">
+                        <td>{{ request.id }}</td>
+                        <td>{{ request.created_at|date:"d/m/Y" }}</td>
+                        <td>{{ request.appointment_date|date:"d/m/Y" }}</td>
+                        <td>{{ request.appointment_time }}</td>
+                        <td>{{ request.description }}</td>
+                        <td>{{ request.get_request_type_display }}</td>
+                        <td>
                             <span class="badge {% if request.status == 'pending' %}bg-warning
                                             {% elif request.status == 'confirmed' %}bg-info
                                             {% elif request.status == 'assigned' %}bg-primary
@@ -97,8 +95,7 @@
                                 {{ request.get_status_display }}
                             </span>
                         </td>
-                        <!-- เพิ่มในตารางหรือการ์ดแสดงรายการ -->
-                        <td onclick="window.location.href='{% url 'service:request_detail' request.pk %}'">
+                        <td>
                             {% if request.warranty_status == 'in_warranty' %}
                                 <span class="badge bg-success">อยู่ในประกัน</span>
                             {% elif request.warranty_status == 'out_of_warranty' %}
@@ -107,13 +104,10 @@
                                 -
                             {% endif %}
                         </td>
-                        <!--<td>
-                            <a href="{% url 'service:request_detail' request.id %}" class="btn btn-info btn-sm">ดูรายละเอียด</a>
-                        </td>-->
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center">ไม่พบรายการแจ้งซ่อม</td>
+                        <td colspan="8" class="text-center">ไม่พบรายการแจ้งซ่อม</td>
                     </tr>
                     {% endfor %}
                 </tbody>

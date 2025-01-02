@@ -99,6 +99,12 @@
                             </div>
                             
                             <div class="mb-3">
+                                <label for="project_type" class="form-label">ประเภทโครงการ</label>
+                                <input type="text" class="form-control" id="project_type" name="project_type" 
+                                       value="{{ user.customer.project_type }}" required>
+                            </div>
+
+                            <div class="mb-3">
                                 <label for="project_name" class="form-label">ชื่อโครงการ</label>
                                 <input type="text" class="form-control" id="project_name" name="project_name" 
                                        value="{{ user.customer.project_name }}" required>

@@ -129,14 +129,18 @@ class ServiceRequest(models.Model):
         """ตรวจสอบสถานะประกันอัตโนมัติ"""
         today = timezone.now().date()
         
-        if not self.warranty_start_date or not self.warranty_end_date:
-            self.warranty_status = 'pending_warranty'
-            return
-            
-        if today <= self.warranty_end_date:
+        # ตรวจสอบสถานะประกันจาก Customer
+        customer = self.customer
+        if customer.warranty_status == 'ACTIVE':
             self.warranty_status = 'in_warranty'
-        else:
+        elif customer.warranty_status == 'EXPIRED':
             self.warranty_status = 'out_of_warranty'
+        else:
+            self.warranty_status = 'pending_warranty'
+        
+        # อัพเดทวันที่ประกัน
+        self.warranty_start_date = today
+        self.warranty_end_date = customer.warranty_expiry_date
         self.save()
 
     @property
@@ -197,13 +201,18 @@ class ServiceRequest(models.Model):
     def save(self, *args, **kwargs):
         # คำนวณราคาอัตโนมัติเมื่อมีการบันทึก
         if self.service_category:
-            self.calculated_price = self.calculate_service_price()
+            self.calculated_price = self.calculate_service_fee()
         
         # ตรวจสอบว่าเป็นการซื้ออะไหล่ใหม่หรือไม่
         if self.request_type in ['install', 'all_in'] and not self.warranty_start_date:
             self.warranty_start_date = timezone.now().date()
             self.warranty_end_date = self.warranty_start_date + timedelta(days=365)
             self.warranty_status = 'in_warranty'
+            
+            # อัพเดทสถานะประกันของลูกค้า
+            self.customer.warranty_status = 'ACTIVE'
+            self.customer.warranty_expiry_date = self.warranty_end_date
+            self.customer.save()
         
         # ตรวจสอบสถานะประกัน
         self.check_warranty_status()

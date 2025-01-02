@@ -19,13 +19,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-gp3++ko3ommo5#s%&+*0+)e9rwb=2f8snztyikz9#n(qsvmq0v'
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['cb9b-49-0-80-224.ngrok-free.app', '127.0.0.1', 'localhost','192.168.2.188', 'electrical-crm-app.herokuapp.com']
+
+CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
 
 # เพิ่มการตั้งค่าสำหรับ Media files
 MEDIA_URL = '/media/'

@@ -1,0 +1,1 @@
+web: gunicorn electrical_crm.wsgi

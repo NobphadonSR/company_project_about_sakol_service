@@ -167,38 +167,44 @@
 
 <!-- ย้าย Modals ออกมานอก table -->
 {% for request in service_requests %}
-<div class="modal fade" id="warrantyModal{{ request.pk }}" tabindex="-1" aria-labelledby="warrantyModalLabel{{ request.pk }}" aria-hidden="true">
+<div class="modal fade" id="warrantyModal{{ request.id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="warrantyModalLabel{{ request.pk }}">จัดการประกัน - เลขที่คำขอ {{ request.pk }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">จัดการประกัน</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="warrantyForm{{ request.pk }}" onsubmit="return false;">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label class="form-label">วันที่เริ่มประกัน</label>
-                        <input type="date" class="form-control" name="warranty_date" required>
+                <div class="mb-3">
+                    <label class="form-label">สถานะประกันปัจจุบัน:</label>
+                    <div>
+                        {% if request.warranty_status == 'in_warranty' %}
+                            <span class="badge bg-success">อยู่ในประกัน</span>
+                            <small class="d-block text-muted">
+                                ถึงวันที่: {{ request.warranty_end_date|date:"d/m/Y" }}
+                            </small>
+                        {% else %}
+                            <span class="badge bg-danger">ไม่อยู่ในประกัน</span>
+                        {% endif %}
                     </div>
-                    <!-- แสดงข้อมูลประกันปัจจุบัน ถ้ามี -->
-                    {% if request.warranty_start_date %}
-                    <div class="alert alert-info">
-                        <strong>ประกันปัจจุบัน:</strong><br>
-                        เริ่ม: {{ request.warranty_start_date|date:"d/m/Y" }}<br>
-                        สิ้นสุด: {{ request.warranty_end_date|date:"d/m/Y" }}
-                    </div>
-                    {% endif %}
-                </form>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">ดำเนินการ:</label>
+                    <select class="form-select" id="warrantyAction{{ request.id }}">
+                        <option value="set_warranty">ตั้งค่าประกันใหม่</option>
+                        <option value="cancel_warranty">ยกเลิกประกัน</option>
+                    </select>
+                </div>
+
+                <div id="warrantyDateInput{{ request.id }}" class="mb-3">
+                    <label class="form-label">วันที่เริ่มประกัน:</label>
+                    <input type="date" class="form-control" id="warrantyDate{{ request.id }}">
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
-                <button type="button" class="btn btn-success" onclick="setWarranty({{ request.pk }})">
-                    ตั้งค่าประกัน
-                </button>
-                <button type="button" class="btn btn-danger" onclick="removeWarranty({{ request.pk }})">
-                    ยกเลิกประกัน
-                </button>
+                <button type="button" class="btn btn-primary" onclick="setWarranty({{ request.id }})">บันทึก</button>
             </div>
         </div>
     </div>
