@@ -10,7 +10,7 @@ class User(AbstractUser):
     )
     
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES)
-    phone = models.CharField(max_length=15)
+    phone = models.CharField(max_length=50, null=True, blank=True)
     address = models.TextField(blank=True)
     profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
 
@@ -55,7 +55,7 @@ class Customer(models.Model):
         verbose_name="วันหมดประกัน"
     )
     project_category = models.CharField(max_length=10, choices=PROJECT_CATEGORIES, default='OTHER', verbose_name="ขนาดบ้าน")
-    phone = models.CharField(max_length=15, verbose_name="เบอร์โทร")
+    phone = models.CharField(max_length=50, null=True, blank=True, verbose_name="เบอร์โทร")
     customer_name = models.CharField(max_length=100, verbose_name="ชื่อลูกค้า")
     # ลบ location ที่เป็น TextField ออก เพราะซ้ำซ้อนกับ CharField
     latitude = models.DecimalField(

@@ -6,7 +6,7 @@ from django.views.generic import ListView, DetailView, TemplateView, CreateView,
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.http import JsonResponse, HttpResponseForbidden
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from datetime import datetime, timedelta
 import pandas as pd
 from .models import (
@@ -28,6 +28,9 @@ from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 import io
 from decimal import Decimal
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 # หน้าแรก
 class HomeView(TemplateView):
@@ -240,25 +243,63 @@ class DashboardView(LoginRequiredMixin, ServiceStaffRequired, TemplateView):
         return context
 
 # ดูรายการบันทึกงาน
-class ServiceRecordListView(LoginRequiredMixin, ServiceStaffRequired, ListView):
+class ServiceRecordListView(LoginRequiredMixin, ListView):
     model = ServiceRecord
     template_name = 'service/record_list.html'
     context_object_name = 'records'
-    
+    paginate_by = 10
+
     def get_queryset(self):
-        # เรียงลำดับตามวันที่และเวลาล่าสุด
-        return ServiceRecord.objects.all().order_by('-date', '-time')
+        queryset = super().get_queryset()
+        search_query = self.request.GET.get('search')
+        
+        if search_query:
+            queryset = queryset.filter(
+                Q(customer__customer_name__icontains=search_query) |
+                Q(job_number__icontains=search_query) |
+                Q(customer__phone__icontains=search_query)
+            )
+        
+        return queryset.order_by('sequence')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # เพิ่มข้อมูลเพิ่มเติมที่ต้องการแสดงในหน้า
-        context['status_colors'] = {
-            'pending': 'warning',
-            'in_progress': 'info', 
-            'completed': 'success',
-            'cancelled': 'danger'
-        }
+        
+        # คำนวณลำดับเริ่มต้นสำหรับแต่ละหน้า
+        page_number = self.request.GET.get('page', 1)
+        context['start_index'] = (int(page_number) - 1) * self.paginate_by
+        
+        # เพิ่มข้อมูลสำหรับการแสดงผล
+        context['total_records'] = self.get_queryset().count()
+        context['current_page'] = page_number
+        
+        # สร้างรายการลำดับสำหรับแต่ละรายการในหน้าปัจจุบัน
+        records_with_index = []
+        for index, record in enumerate(context['records'], start=context['start_index'] + 1):
+            records_with_index.append({
+                'index': index,
+                'record': record
+            })
+        context['records_with_index'] = records_with_index
+        
+        print(f"จำนวนรายการที่จะแสดง: {context['total_records']}")
+        print(f"หน้าปัจจุบัน: {context['current_page']}")
+        print(f"เริ่มต้นที่ลำดับ: {context['start_index'] + 1}")
+        
         return context
+
+class ServiceRecordDeleteView(LoginRequiredMixin, DeleteView):
+    model = ServiceRecord
+    success_url = reverse_lazy('service:service_records')
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            response = super().delete(request, *args, **kwargs)
+            messages.success(request, 'ลบรายการเรียบร้อยแล้ว')
+            return response
+        except Exception as e:
+            messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+            return redirect('service:service_records')
 
 # สร้างบันทึกงาน
 class ServiceRecordCreateView(LoginRequiredMixin, ServiceStaffRequired, CreateView):
@@ -267,18 +308,120 @@ class ServiceRecordCreateView(LoginRequiredMixin, ServiceStaffRequired, CreateVi
     template_name = 'service/record_form.html'
     success_url = reverse_lazy('service:service_records')
 
+class ServiceRecordDetailView(LoginRequiredMixin, DetailView):
+    model = ServiceRecord
+    template_name = 'service/record_detail.html'
+    context_object_name = 'record'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        record = self.get_object()
+        
+        # เพิ่มข้อมูลสถานะการรับประกัน
+        if record.warranty_expiry:
+            today = timezone.now().date()
+            context['warranty_status'] = 'ในประกัน' if record.warranty_expiry >= today else 'หมดประกัน'
+            context['days_remaining'] = (record.warranty_expiry - today).days if record.warranty_expiry >= today else 0
+        
+        # เพิ่มข้อมูลการนัดหมาย
+        if record.appointment_date:
+            today = timezone.now().date()
+            context['appointment_status'] = 'รอดำเนินการ' if record.appointment_date >= today else 'เลยกำหนด'
+            context['days_to_appointment'] = (record.appointment_date - today).days
+        
+        # เพิ่มข้อมูลประวัติการบริการของลูกค้า
+        context['service_history'] = ServiceRecord.objects.filter(
+            customer=record.customer
+        ).exclude(
+            id=record.id
+        ).order_by('-date', '-time')[:5]  # แสดง 5 รายการล่าสุด
+        
+        # เพิ่มข้อมูลสถิติ
+        context['stats'] = {
+            'total_services': ServiceRecord.objects.filter(customer=record.customer).count(),
+            'completed_services': ServiceRecord.objects.filter(
+                customer=record.customer,
+                completion_status=True
+            ).count(),
+            'pending_services': ServiceRecord.objects.filter(
+                customer=record.customer,
+                completion_status=False
+            ).count()
+        }
+        
+        # เพิ่มข้อมูลโครงการ
+        context['project_info'] = {
+            'total_houses': ServiceRecord.objects.filter(project_name=record.project_name).count(),
+            'total_services': ServiceRecord.objects.filter(
+                project_name=record.project_name
+            ).exclude(id=record.id).count()
+        }
+        
+        # เพิ่มข้อมูลช่างเทคนิค
+        if record.technician_name:
+            context['technician_stats'] = {
+                'total_services': ServiceRecord.objects.filter(
+                    technician_name=record.technician_name
+                ).count(),
+                'completed_services': ServiceRecord.objects.filter(
+                    technician_name=record.technician_name,
+                    completion_status=True
+                ).count()
+            }
+        
+        # เพิ่มข้อมูลสำหรับการติดตาม
+        context['timeline'] = [
+            {
+                'date': record.date,
+                'event': 'รับแจ้งงาน',
+                'details': record.description
+            }
+        ]
+        if record.appointment_date:
+            context['timeline'].append({
+                'date': record.appointment_date,
+                'event': 'นัดหมาย',
+                'details': f'เวลา: {record.appointment_time}'
+            })
+        
+        return context
+
 # แก้ไขบันทึกงาน
 class ServiceRecordUpdateView(LoginRequiredMixin, ServiceStaffRequired, UpdateView):
     model = ServiceRecord
     form_class = ServiceRecordForm
     template_name = 'service/record_form.html'
-    success_url = reverse_lazy('service:service_records')
+    
+    def get_success_url(self):
+        messages.success(self.request, 'บันทึกการแก้ไขเรียบร้อยแล้ว')
+        return reverse_lazy('service:record_detail', kwargs={'pk': self.object.pk})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'แก้ไขบันทึกการบริการ'
+        context['is_update'] = True
+        return context
+        
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # บันทึกประวัติการแก้ไข
+        ServiceRecord.objects.create(
+            service_record=self.object,
+            modified_by=self.request.user,
+            modified_fields=form.changed_data,
+            action='update'
+        )
+        return response
 
 # ลบบันทึกงาน
-class ServiceRecordDeleteView(LoginRequiredMixin, ServiceStaffRequired, DeleteView):
+class ServiceRecordDeleteView(LoginRequiredMixin, DeleteView):
     model = ServiceRecord
-    template_name = 'service/record_confirm_delete.html'
     success_url = reverse_lazy('service:service_records')
+    template_name = 'service/record_confirm_delete.html'
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(self.request, 'ลบข้อมูลเรียบร้อยแล้ว')
+        return super().delete(request, *args, **kwargs)
 
 # ปฏิทินของช่าง
 class TechnicianCalendarView(LoginRequiredMixin, TechnicianRequired, TemplateView):
@@ -1223,185 +1366,162 @@ class CustomerMapView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             
         context['markers'] = markers
         return context
-
 @require_POST
 def upload_excel(request):
     try:
         excel_file = request.FILES['excel_file']
-        
-        # อ่านไฟล์ Excel
-        if excel_file.name.endswith('.csv'):
-            df = pd.read_csv(excel_file)
-        else:
-            df = pd.read_excel(excel_file)
+        df = pd.read_excel(excel_file)
+        # สร้าง default user สำหรับ customer ถ้ายังไม่มี
+        default_user, created = User.objects.get_or_create(
+            username='default_customer',
+            defaults={
+                'email': 'default@example.com',
+                'first_name': 'Default',
+                'last_name': 'Customer',
+                'is_active': False
+            }
+        )
+        if created:
+            default_user.set_password('some-very-secure-password')
+            default_user.save()
 
-        # ทำความสะอาดชื่อคอลัมน์
-        df.columns = df.columns.str.strip()  # ลบช่องว่างหน้า-หลัง
-        
-        # Map column names
-        column_mapping = {
-            'เลขงาน': 'job_number',
-            'ชื่อลูกบ้าน': 'customer_name',
-            'โครงการ': 'project_name',
-            'อาการรับแจ้ง': 'description',
-            'สถานะ': 'status',
-            'วดป.': 'date',
-            'เวลา': 'time',
-            'เลขที่บิล': 'bill_number',
-            'เบอร์ติดต่อ': 'phone',
-            'บ้านเลขที่': 'house_number',
-            'แปลง': 'plot_number',
-            'แบบ': 'house_type',
-            'รหัสโครงการ': 'project_code',
-            'จนท.': 'technician_name',
-            'เบอร์ติดต่อ จนท.': 'technician_phone',
-            'วัสดุ/อุปกรณ์ที่ผิดปกติ': 'equipment_status',
-            'สาเหตุที่ตรวจพบ': 'cause_found',
-            'การแก้ไข': 'solution',
-            'หมายเหตุ': 'notes'
-        }
-
-        # เปลี่ยนชื่อคอลัมน์
-        df = df.rename(columns=column_mapping)
-        
         success_count = 0
         error_records = []
-
+        duplicate_records = []
+        
         for index, row in df.iterrows():
             try:
-                # สร้างหรือค้นหาลูกค้า
-                customer, created = Customer.objects.get_or_create(
-                    customer_name=row['ชื่อลูกบ้าน'],  # ใช้ชื่อคอลัมน์เดิม
-                    defaults={
-                        'project_name': row['โครงการ'],  # ใช้ชื่อคอลัมน์เดิม
-                        'phone': row.get('เบอร์ติดต่อ', ''),
-                        'house_number': row.get('บ้านเลขที่', ''),
-                        'plot_number': row.get('แปลง', ''),
-                        'house_type': row.get('แบบ', ''),
-                        'project_code': row.get('รหัสโครงการ', '')
-                    }
-                )
-
                 # แปลงวันที่
                 try:
                     date_str = str(row['วดป.'])
-                    date_value = pd.to_datetime(date_str).date()
+                    date_obj = pd.to_datetime(date_str).date()
                 except:
-                    date_value = None
+                    date_obj = None
+                    print(f"Error parsing date: {date_str}")
+
+                # แปลงเวลา
+                try:
+                    time_str = str(row['เวลา'])
+                    if 'น.' in time_str:
+                        time_str = time_str.replace(' น.', '')
+                    if '.' in time_str:
+                        hour, minute = time_str.split('.')
+                        time_str = f"{hour.zfill(2)}:{minute.zfill(2)}"
+                    time_obj = datetime.strptime(time_str, '%H:%M').time()
+                except:
+                    time_obj = None
+                    print(f"Error parsing time: {row['เวลา']}")
+
+                # สร้างหรือดึงข้อมูลลูกค้า
+                customer_name = str(row['ชื่อลูกบ้าน'])[:100]
+                phone = str(row['เบอร์ติดต่อ'])[:15] if pd.notna(row['เบอร์ติดต่อ']) else ''
+                
+                customer, created = Customer.objects.get_or_create(
+                    customer_name=customer_name,
+                    defaults={
+                        'phone': phone,
+                        'user': default_user,
+                        'project_name': str(row['โครงการ'])[:100] if pd.notna(row['โครงการ']) else '',
+                        'house_number': str(row['บ้านเลขที่'])[:50] if pd.notna(row['บ้านเลขที่']) else ''
+                    }
+                )
+
+                # ตรวจสอบว่ามีข้อมูลอยู่แล้วหรือไม่
+                job_number = str(row['เลขงาน'])[:50] if pd.notna(row['เลขงาน']) else ''
+                existing_record = ServiceRecord.objects.filter(
+                    job_number=job_number,
+                    customer=customer,
+                    date=date_obj
+                ).exists()
+
+                if existing_record:
+                    duplicate_records.append({
+                        'row': index + 2,
+                        'job_number': job_number,
+                        'customer': customer_name,
+                        'date': date_obj
+                    })
+                    continue
 
                 # สร้าง ServiceRecord
-                ServiceRecord.objects.create(
-                    job_number=str(row['เลขงาน']),
+                service_record = ServiceRecord.objects.create(
+                    sequence=int(row['ลำดับ']) if pd.notna(row['ลำดับ']) else 0,
+                    completion_status=True if str(row['สถานะจบงาน']).lower() == 'เสร็จ' else False,
+                    year=str(row['ปี พ.ศ.'])[:4] if pd.notna(row['ปี พ.ศ.']) else '',
+                    date=date_obj,
+                    month=int(row['ด.']) if pd.notna(row['ด.']) else None,
+                    time=time_obj,
+                    job_number=job_number,
+                    bill_number=str(row['เลขที่บิล'])[:50] if pd.notna(row['เลขที่บิล']) else '',
                     customer=customer,
-                    description=row['อาการรับแจ้ง'],
-                    status=row['สถานะ'],
-                    date=date_value,
-                    time=str(row['เวลา']),
-                    bill_number=str(row.get('เลขที่บิล', '')),
-                    technician_name=row.get('จนท.', ''),
-                    technician_phone=row.get('เบอร์ติดต่อ จนท.', ''),
-                    equipment_status=row.get('วัสดุ/อุปกรณ์ที่ผิดปกติ', ''),
-                    cause_found=row.get('สาเหตุที่ตรวจพบ', ''),
-                    solution=row.get('การแก้ไข', ''),
-                    notes=row.get('หมายเหตุ', '')
+                    technician_name=str(row['จนท.'])[:100] if pd.notna(row['จนท.']) else '',
+                    technician_phone=str(row['เบอร์ติดต่อ จนท.'])[:15] if pd.notna(row['เบอร์ติดต่อ จนท.']) else '',
+                    project_code=str(row['รหัสโครงการ'])[:50] if pd.notna(row['รหัสโครงการ']) else '',
+                    project_name=str(row['โครงการ'])[:100] if pd.notna(row['โครงการ']) else '',
+                    house_number=str(row['บ้านเลขที่'])[:50] if pd.notna(row['บ้านเลขที่']) else '',
+                    description=str(row['อาการรับแจ้ง']) if pd.notna(row['อาการรับแจ้ง']) else '',
+                    status=str(row['สถานะ'])[:50] if pd.notna(row['สถานะ']) else '',
+                    equipment_status=str(row['วัสดุ/อุปกรณ์ที่ผิดปกติ']) if pd.notna(row['วัสดุ/อุปกรณ์ที่ผิดปกติ']) else '',
+                    cause_found=str(row['สาเหตุที่ตรวจพบ']) if pd.notna(row['สาเหตุที่ตรวจพบ']) else '',
+                    solution=str(row['การแก้ไข']) if pd.notna(row['การแก้ไข']) else '',
+                    notes=str(row['หมายเหตุ']) if pd.notna(row['หมายเหตุ']) else ''
                 )
+                
                 success_count += 1
+                print(f"Created record: {service_record}")
 
             except Exception as e:
-                print(f"Error in row {index + 2}: {str(e)}")  # เพิ่ม debug log
                 error_records.append({
                     'row': index + 2,
                     'error': str(e)
                 })
+                print(f"Error on row {index + 2}: {str(e)}")
 
-        return JsonResponse({
+        response_data = {
             'status': 'success',
             'message': f'นำเข้าข้อมูลสำเร็จ {success_count} รายการ',
-            'errors': error_records
-        })
+            'errors': error_records if error_records else None,
+        }
+
+        if duplicate_records:
+            response_data['duplicates'] = duplicate_records
+            response_data['message'] += f'\nพบข้อมูลซ้ำ {len(duplicate_records)} รายการ'
+
+        return JsonResponse(response_data)
 
     except Exception as e:
-        print(f"Upload error: {str(e)}")  # เพิ่ม debug log
+        print(f"Upload error: {str(e)}")
         return JsonResponse({
             'status': 'error',
             'message': f'เกิดข้อผิดพลาด: {str(e)}'
         }, status=400)
 
 def download_template(request):
-    """สร้างไฟล์ Excel template สำหรับการนำเข้าข้อมูล"""
     wb = Workbook()
     ws = wb.active
-    ws.title = "Service Records Template"
-
-    # กำหนดหัวคอลัมน์ตามข้อมูลที่ต้องการ
+    ws.title = "Template"
+    
+    # กำหนดหัวคอลัมน์
     headers = [
-        'ลำดับ',
-        'สถานะจบงาน',
-        'ปี พ.ศ.',
-        'วดป.',
-        'ด.',
-        'เวลา',
-        'เลขงาน',
-        'เลขที่บิล',
-        'ชื่อลูกบ้าน',
-        'เบอร์ติดต่อ',
-        'จนท.',
-        'เบอร์ติดต่อ จนท.',
-        'รหัสโครงการ',
-        'โครงการ',
-        'บ้านเลขที่',
-        'แปลง',
-        'แบบ',
-        'โอน',
-        'วันที่หมดประกัน',
-        'อาการรับแจ้ง',
-        'สถานะ',
-        'วันนัด',
-        'เวลานัด',
-        'วัสดุ/อุปกรณ์ที่ผิดปกติ',
-        'สาเหตุที่ตรวจพบ',
-        'การแก้ไข',
-        'ชื่อ',
-        'หมายเหตุ',
-        'จำนวน',
-        'Link รูปภาพที่ออกSERVICE',
-        'หมายเหตุ.1'
+        'ลำดับ', 'สถานะจบงาน', 'ปี พ.ศ.', 'วดป.', 'ด.', 'เวลา', 
+        'เลขงาน', 'เลขที่บิล', 'ชื่อลูกบ้าน', 'เบอร์ติดต่อ', 'จนท.', 
+        'เบอร์ติดต่อ จนท.', 'รหัสโครงการ', 'โครงการ', 'บ้านเลขที่', 
+        'แปลง', 'แบบ', 'โอน', 'วันที่หมดประกัน', 'อาการรับแจ้ง', 
+        'สถานะ', 'วันนัด', 'เวลานัด', 'วัสดุ/อุปกรณ์ที่ผิดปกติ', 
+        'สาเหตุที่ตรวจพบ', 'การแก้ไข', 'ชื่อ', 'หมายเหตุ', 'จำนวน', 
+        'Link รูปภาพที่ออกSERVICE', 'หมายเหตุเพิ่มเติม'
     ]
     ws.append(headers)
-
+    
     # ตัวอย่างข้อมูล
     sample_data = [
-        '1',                    # ลำดับ
-        '√',                    # สถานะจบงาน
-        '61',                   # ปี พ.ศ.
-        '3/1/2561',            # วดป.
-        '1',                    # ด.
-        '11.13 น.',            # เวลา
-        'AF61-0001',           # เลขงาน
-        'IV2108473',           # เลขที่บิล
-        'คุณสุรทิพย์',          # ชื่อลูกบ้าน
-        '061-6253253',         # เบอร์ติดต่อ
-        'คุณโบว์',             # จนท.
-        '088-2494614',         # เบอร์ติดต่อ จนท.
-        'CSN',                 # รหัสโครงการ
-        'ชัยพฤกษ์ ศรีนครินทร์', # โครงการ
-        '129/181',             # บ้านเลขที่
-        '00J13',               # แปลง
-        '177PW223T',           # แบบ
-        '12/9/2559',           # โอน
-        '12/9/2560',           # วันที่หมดประกัน
-        'สายสัญญาณทีวีไม่เข้า',  # อาการรับแจ้ง
-        'จบงาน/ให้คำปรึกษา',    # สถานะ
-        '12/9/2559',           # วันนัด
-        '10.00 น.',            # เวลานัด
-        'ปกติ',                # วัสดุ/อุปกรณ์ที่ผิดปกติ
-        'เช็คระบบภายในตู้เทสกันดูดRCBO 5ตัว ตัดที่9MA ปกติ',  # สาเหตุที่ตรวจพบ
-        'เช็คอุปกรณ์และขันน็อตแน่นทุกตัว เทสกันดูด เมนต์ เซอร์กิตทุกตัว',  # การแก้ไข
-        'มานพ+บุญมา',          # ชื่อ
-        'ค่าบริการ IV.1811256', # หมายเหตุ
-        '856',                 # จำนวน
-        'ส่งเคลม ของดีกลับมาคืนเข้าสต็อก',  # Link รูปภาพที่ออกSERVICE
-        'ลูกค้าไม่ได้อยู่บ้านหลังนี้'  # หมายเหตุ.1
+        1, 'เสร็จ', '2566', '2566-01-01', 1, '09:00',
+        'AF66-0001', 'BILL001', 'คุณลูกค้า', '0812345678', 'ช่างA',
+        '0898765432', 'CSN', 'โครงการA', '123/45', 
+        'A-01', 'Type-A', '2565-01-01', '2567-01-01', 'เครื่องปรับอากาศไม่เย็น',
+        'รอดำเนินการ', '2566-01-02', '10:00', 'คอยล์เย็นสกปรก',
+        'ฝุ่นอุดตัน', 'ล้างทำความสะอาด', 'ช่างA,ช่างB', 'งานเสร็จเรียบร้อย', 1500,
+        'http://example.com/image1.jpg', 'ลูกค้าพอใจมาก'
     ]
     ws.append(sample_data)
 

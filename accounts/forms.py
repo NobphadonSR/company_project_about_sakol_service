@@ -4,8 +4,8 @@ from .models import User, Customer
 
 class CustomerRegistrationForm(UserCreationForm):
     project_name = forms.CharField(max_length=100, label="ชื่อโครงการ")
-    house_number = forms.CharField(max_length=50, label="บ้านเลขที่")
-    phone = forms.CharField(max_length=15, label="เบอร์โทร")
+    house_number = forms.CharField(max_length=50, label="บ้านเลขที่") 
+    phone = forms.CharField(max_length=50, required=False, label="เบอร์โทร", empty_value=None)
     customer_name = forms.CharField(max_length=100, label="ชื่อลูกค้า")
     location = forms.CharField(widget=forms.Textarea, label="ที่อยู่")
     project_type = forms.ChoiceField(

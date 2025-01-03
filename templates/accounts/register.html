@@ -76,7 +76,7 @@
                     {% for field in form %}
                         {% if field.name in 'username,email,password1,password2' %}
                             <div class="mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }} *</label>
                                 {% if field.errors %}
                                     <div class="alert alert-danger">{{ field.errors }}</div>
                                 {% endif %}
@@ -94,7 +94,7 @@
                     {% for field in form %}
                         {% if field.name not in 'username,email,password1,password2' %}
                             <div class="mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }} *</label>
                                 {% if field.errors %}
                                     <div class="alert alert-danger">{{ field.errors }}</div>
                                 {% endif %}

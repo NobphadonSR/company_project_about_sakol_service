@@ -109,6 +109,14 @@ class ServiceRequestForm(forms.ModelForm):
         return instance
 
 class ServiceRecordForm(forms.ModelForm):
+
+    # เพิ่มฟิลด์ customer_phone แยก
+    customer_phone = forms.CharField(
+        max_length=20,
+        required=False,
+        label='เบอร์โทรลูกค้า',
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
     class Meta:
         model = ServiceRecord
         fields = [
@@ -126,7 +134,6 @@ class ServiceRecordForm(forms.ModelForm):
             
             # ข้อมูลลูกค้าและเจ้าหน้าที่
             'customer',
-            'customer_phone',
             'technician_name',
             'technician_phone',
             
@@ -192,6 +199,8 @@ class ServiceRecordForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance and self.instance.customer:
+            self.fields['customer_phone'].initial = self.instance.customer.phone
         # เพิ่ม class Bootstrap ให้กับ fields
         for field in self.fields:
             if isinstance(self.fields[field].widget, forms.CheckboxInput):
@@ -211,3 +220,15 @@ class ServiceRecordForm(forms.ModelForm):
                          'service_images', 'additional_notes']
         for field in optional_fields:
             self.fields[field].required = False
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        # อัพเดทเบอร์โทรลูกค้า
+        if instance.customer:
+            instance.customer.phone = self.cleaned_data.get('customer_phone', '')
+            instance.customer.save()
+            
+        if commit:
+            instance.save()
+        return instance

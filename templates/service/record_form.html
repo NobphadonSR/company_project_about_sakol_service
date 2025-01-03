@@ -1,189 +1,218 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}แก้ไขบันทึก{% else %}เพิ่มบันทึกใหม่{% endif %}{% endblock %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* สไตล์สำหรับฟอร์ม */
+    .form-section {
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .form-section:last-child {
+        border-bottom: none;
+    }
+    
+    .section-title {
+        color: #084298;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #084298;
+    }
+    
+    /* สไตล์สำหรับ input fields */
+    .form-control:focus {
+        border-color: #084298;
+        box-shadow: 0 0 0 0.2rem rgba(8, 66, 152, 0.25);
+    }
+    
+    /* สไตล์สำหรับ required fields */
+    .required-field label:after {
+        content: " *";
+        color: red;
+    }
+    
+    /* สไตล์สำหรับ help text */
+    .help-text {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    
+    /* สไตล์สำหรับ error messages */
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="form-container">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">{% if object %}แก้ไขบันทึก{% else %}เพิ่มบันทึกใหม่{% endif %}</h5>
-            </div>
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    
+<div class="container-fluid mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">{{ title }}</h4>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- ข้อมูลลูกค้า -->
+                <div class="form-section">
+                    <h5 class="section-title">ข้อมูลลูกค้า</h5>
                     <div class="row">
-                        <!-- ข้อมูลพื้นฐาน -->
-                        <div class="col-md-6">
-                            <h6 class="mb-3">ข้อมูลพื้นฐาน</h6>
-                            {% for field in form %}
-                                {% if field.name in 'job_number,completion_status,year,date,month,time' %}
-                                <div class="mb-4">
-                                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                                    {{ field }}
-                                    {% if field.help_text %}
-                                    <div class="form-text">{{ field.help_text }}</div>
-                                    {% endif %}
-                                    {% if field.errors %}
-                                    <div class="alert alert-danger">
-                                        {{ field.errors }}
-                                    </div>
-                                    {% endif %}
-                                </div>
+                        {% for field in form %}
+                            {% if field.name in 'customer,customer_name,phone' %}
+                            <div class="col-md-4 mb-3 {% if field.field.required %}required-field{% endif %}">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="help-text">{{ field.help_text }}</div>
                                 {% endif %}
-                            {% endfor %}
-                        </div>
-
-                        <!-- ข้อมูลลูกค้า -->
-                        <div class="col-md-6">
-                            <h6 class="mb-3">ข้อมูลลูกค้า</h6>
-                            {% for field in form %}
-                                {% if field.name in 'customer,project_code,plot_number,transfer_status,warranty_expiry' %}
-                                <div class="mb-4">
-                                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                                    {{ field }}
-                                    {% if field.help_text %}
-                                    <div class="form-text">{{ field.help_text }}</div>
-                                    {% endif %}
-                                    {% if field.errors %}
-                                    <div class="alert alert-danger">
-                                        {{ field.errors }}
-                                    </div>
-                                    {% endif %}
-                                </div>
+                                {% if field.errors %}
+                                <div class="error-message">{{ field.errors }}</div>
                                 {% endif %}
-                            {% endfor %}
-                        </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
+                </div>
 
-                    <div class="row mt-4">
-                        <!-- ข้อมูลการบริการ -->
-                        <div class="col-12">
-                            <h6 class="mb-3">ข้อมูลการบริการ</h6>
-                            {% for field in form %}
-                                {% if field.name in 'reported_issue,appointment_date,appointment_time,faulty_equipment,cause,solution,notes,service_cost' %}
-                                <div class="mb-4">
-                                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                                    {{ field }}
-                                    {% if field.help_text %}
-                                    <div class="form-text">{{ field.help_text }}</div>
-                                    {% endif %}
-                                    {% if field.errors %}
-                                    <div class="alert alert-danger">
-                                        {{ field.errors }}
-                                    </div>
-                                    {% endif %}
-                                </div>
+                <!-- ข้อมูลการบริการ -->
+                <div class="form-section">
+                    <h5 class="section-title">ข้อมูลการบริการ</h5>
+                    <div class="row">
+                        {% for field in form %}
+                            {% if field.name in 'job_number,date,time,description,status' %}
+                            <div class="col-md-4 mb-3 {% if field.field.required %}required-field{% endif %}">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="help-text">{{ field.help_text }}</div>
                                 {% endif %}
-                            {% endfor %}
-                        </div>
+                                {% if field.errors %}
+                                <div class="error-message">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
+                </div>
 
-                    <div class="d-grid mt-4">
-                        <button type="submit" class="btn btn-primary">บันทึก</button>
-                        <a href="{% url 'service:service_records' %}" class="btn btn-secondary">ยกเลิก</a>
+                <!-- ข้อมูลโครงการ -->
+                <div class="form-section">
+                    <h5 class="section-title">ข้อมูลโครงการ</h5>
+                    <div class="row">
+                        {% for field in form %}
+                            {% if field.name in 'project_code,project_name,house_number,plot_number,house_model' %}
+                            <div class="col-md-4 mb-3 {% if field.field.required %}required-field{% endif %}">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="help-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% if field.errors %}
+                                <div class="error-message">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
-                </form>
-            </div>
+                </div>
+
+                <!-- ข้อมูลการดำเนินการ -->
+                <div class="form-section">
+                    <h5 class="section-title">ข้อมูลการดำเนินการ</h5>
+                    <div class="row">
+                        {% for field in form %}
+                            {% if field.name in 'equipment_status,cause_found,solution,completion_status' %}
+                            <div class="col-md-6 mb-3 {% if field.field.required %}required-field{% endif %}">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="help-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% if field.errors %}
+                                <div class="error-message">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- ข้อมูลเพิ่มเติม -->
+                <div class="form-section">
+                    <h5 class="section-title">ข้อมูลเพิ่มเติม</h5>
+                    <div class="row">
+                        {% for field in form %}
+                            {% if field.name in 'notes,additional_notes,service_images' %}
+                            <div class="col-12 mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="help-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% if field.errors %}
+                                <div class="error-message">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex justify-content-between">
+                    <div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> บันทึก
+                        </button>
+                        <a href="{% url 'service:service_records' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> ยกเลิก
+                        </a>
+                    </div>
+                    {% if object %}
+                    <a href="{% url 'service:record_delete' object.id %}" 
+                       class="btn btn-danger"
+                       onclick="return confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')">
+                        <i class="fas fa-trash"></i> ลบ
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .card {
-        border: none;
-        box-shadow: 0 0 20px rgba(0,0,0,0.08);
-        border-radius: 12px;
-    }
+{% block extra_js %}
+<script>
+    // เพิ่ม class form-control ให้กับ input fields ทั้งหมด
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        if (!element.classList.contains('form-control') && 
+            element.type !== 'checkbox' && 
+            element.type !== 'radio') {
+            element.classList.add('form-control');
+        }
+    });
 
-    .card-header {
-        background-color: transparent;
-        border-bottom: 1px solid rgba(0,0,0,0.08);
-        padding: 20px 24px;
-    }
-
-    .card-body {
-        padding: 24px;
-    }
-
-    .form-label {
-        font-weight: 500;
-        margin-bottom: 8px;
-        color: #344767;
-    }
-
-    .form-control {
-        border: 1px solid #e9ecef;
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-    }
-
-    .form-control:focus {
-        border-color: #084298;
-        box-shadow: 0 0 0 0.2rem rgba(8,66,152,0.1);
-    }
-
-    .form-text {
-        font-size: 0.85rem;
-        color: #6c757d;
-        margin-top: 4px;
-    }
-
-    .alert-danger {
-        background-color: #fff;
-        border: 1px solid #dc3545;
-        border-radius: 8px;
-        color: #dc3545;
-        font-size: 0.9rem;
-        padding: 8px 12px;
-        margin-top: 4px;
-    }
-
-    .btn {
-        padding: 12px 24px;
-        font-weight: 500;
-        border-radius: 8px;
-        transition: all 0.2s ease;
-    }
-
-    .btn-primary {
-        background-color: #084298;
-        border-color: #084298;
-        color: #fff;
-    }
-
-    .btn-primary:hover {
-        background-color: #ffffff;
-        color: #084298;
-        border-color: #084298;
-        transform: translateY(-1px);
-    }
-
-    .btn-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-        color: #ffffff;
-    }
-
-    .btn-secondary:hover {
-        background-color: #ffffff;
-        border-color: #6c757d;
-        color: #6c757d;
-        transform: translateY(-1px);
-    }
-
-    .d-grid {
-        gap: 12px;
-    }
-
-    .form-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-</style>
+    // จัดการกับ checkbox และ radio
+    document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(element => {
+        element.classList.add('form-check-input');
+        element.parentElement.classList.add('form-check');
+    });
+</script>
 {% endblock %}

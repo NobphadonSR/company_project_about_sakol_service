@@ -67,6 +67,140 @@
         margin-top: 10px;
         font-size: 0.9em;
     }
+    .table-container {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .table {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table thead th {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 12px 8px;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+        vertical-align: middle;
+        text-align: center;
+    }
+
+    .table tbody td {
+        padding: 8px;
+        vertical-align: middle;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .table tbody tr:hover {
+        background-color: #f5f9ff;
+    }
+
+    .table-responsive {
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+        border-radius: 8px;
+    }
+
+    /* ปรับแต่งแถบเลื่อน */
+    .table-responsive::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    .mt-3 {
+        margin-left: 1rem;
+    }
+    /* สถานะ */
+    .badge {
+        padding: 6px 10px;
+        font-weight: 500;
+        border-radius: 4px;
+    }
+
+    .badge.bg-success {
+        background-color: #28a745 !important;
+    }
+
+    .badge.bg-warning {
+        background-color: #ffc107 !important;
+        color: #000;
+    }
+
+    /* ปุ่มดำเนินการ */
+    .btn-group {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .btn-group .btn {
+        padding: 4px 8px;
+        margin: 0 2px;
+    }
+
+    .btn-sm {
+        font-size: 0.8rem;
+    }
+
+    /* ช่องค้นหา */
+    .search-container {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .search-input {
+        max-width: 300px;
+        border-radius: 4px;
+    }
+
+    /* จัดการคอลัมน์ที่สำคัญ */
+    .table td:nth-child(1), /* ลำดับ */
+    .table td:nth-child(2), /* สถานะ */
+    .table td:nth-child(7), /* เลขงาน */
+    .table td:nth-child(9) { /* ชื่อลูกบ้าน */
+        font-weight: 500;
+    }
+
+    /* ข้อความที่ถูกตัด */
+    .truncate {
+        max-width: 150px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .page-link {
+        color: #084298;
+    }
+    .page-item.active .page-link {
+        background-color: #084298;
+        border-color: #084298;
+    }
+    .mx-2 {
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+    }
 </style>
 {% endblock %}
 
@@ -85,64 +219,131 @@
             </div>
         </div>
     </div>
-    <div class="card-body">
+
+    <div class="search-container">
+        <form method="get" class="mb-0">
+            <div class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <input type="text" 
+                           name="search" 
+                           class="form-control search-input" 
+                           placeholder="ค้นหาชื่อลูกค้า..."
+                           value="{{ request.GET.search }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> ค้นหา
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container">
         <div class="table-responsive">
-            <table class="table table-striped">
+            <table class="table">
                 <thead>
                     <tr>
                         <th>ลำดับ</th>
-                        <th>สถานะ</th>
-                        <th>วันที่</th>
+                        <th>สถานะจบงาน</th>
+                        <th>ปี พ.ศ.</th>
+                        <th>วดป.</th>
+                        <th>ด.</th>
                         <th>เวลา</th>
                         <th>เลขงาน</th>
                         <th>เลขที่บิล</th>
-                        <th>ชื่อลูกค้า</th>
+                        <th>ชื่อลูกบ้าน</th>
+                        <th>เบอร์ติดต่อ</th>
+                        <th>จนท.</th>
+                        <th>เบอร์ติดต่อ จนท.</th>
+                        <th>รหัสโครงการ</th>
                         <th>โครงการ</th>
                         <th>บ้านเลขที่</th>
-                        <th>อาการที่แจ้ง</th>
+                        <th>แปลง</th>
+                        <th>แบบ</th>
+                        <th>โอน</th>
+                        <th>วันที่หมดประกัน</th>
+                        <th>อาการรับแจ้ง</th>
+                        <th>สถานะ</th>
+                        <th>วันนัด</th>
+                        <th>เวลานัด</th>
+                        <th>วัสดุ/อุปกรณ์ที่ผิดปกติ</th>
+                        <th>สาเหตุที่ตรวจพบ</th>
+                        <th>การแก้ไข</th>
+                        <th>ชื่อ</th>
+                        <th>หมายเหตุ</th>
+                        <th>จำนวน</th>
+                        <th>รูปภาพ</th>
+                        <th>หมายเหตุเพิ่มเติม</th>
                         <th>การดำเนินการ</th>
                     </tr>
                 </thead>
+                <!-- แก้ไขส่วน tbody ในตาราง -->
                 <tbody>
-                    {% for record in records %}
-                    <tr>
-                        <td>{{ record.sequence }}</td>
+                    {% for item in records_with_index %}
+                    <tr style="cursor: pointer;" onclick="window.location.href='{% url 'service:record_detail' item.record.id %}'">
+                        <td>{{ item.index }}</td>
                         <td>
-                            {% if record.completion_status %}
-                                <span class="badge bg-success">✓</span>
+                            {% if item.record.completion_status %}
+                                <span class="badge bg-success">เสร็จ</span>
                             {% else %}
-                                <span class="badge bg-warning">-</span>
+                                <span class="badge bg-warning">รอดำเนินการ</span>
                             {% endif %}
                         </td>
-                        <td>{{ record.date|date:"d/m/Y" }}</td>
-                        <td>{{ record.time }}</td>
-                        <td>{{ record.job_number }}</td>
-                        <td>{{ record.bill_number|default:"-" }}</td>
-                        <td>{{ record.customer.customer_name }}</td>
-                        <td>{{ record.project_name }}</td>
-                        <td>{{ record.house_number }}</td>
-                        <td>{{ record.description|truncatechars:50 }}</td>
+                        <td>{{ item.record.year }}</td>
+                        <td>{{ item.record.date|date:"d/m/Y" }}</td>
+                        <td>{{ item.record.month }}</td>
+                        <td>{{ item.record.time }}</td>
+                        <td>{{ item.record.job_number }}</td>
+                        <td>{{ item.record.bill_number|default:"-" }}</td>
+                        <td>{{ item.record.customer.customer_name }}</td>
+                        <td>{{ item.record.customer.phone|default:"-" }}</td>
+                        <td>{{ item.record.technician_name|default:"-" }}</td>
+                        <td>{{ item.record.technician_phone|default:"-" }}</td>
+                        <td>{{ item.record.project_code|default:"-" }}</td>
+                        <td>{{ item.record.project_name }}</td>
+                        <td>{{ item.record.house_number }}</td>
+                        <td>{{ item.record.plot_number|default:"-" }}</td>
+                        <td>{{ item.record.house_model|default:"-" }}</td>
+                        <td>{{ item.record.transfer_status|default:"-" }}</td>
+                        <td>{{ item.record.warranty_expiry|date:"d/m/Y"|default:"-" }}</td>
+                        <td class="truncate">{{ item.record.description }}</td>
+                        <td>{{ item.record.status|default:"-" }}</td>
+                        <td>{{ item.record.appointment_date|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ item.record.appointment_time|default:"-" }}</td>
+                        <td class="truncate">{{ item.record.equipment_status|default:"-" }}</td>
+                        <td class="truncate">{{ item.record.cause_found|default:"-" }}</td>
+                        <td class="truncate">{{ item.record.solution|default:"-" }}</td>
+                        <td>{{ item.record.name|default:"-" }}</td>
+                        <td class="truncate">{{ item.record.notes|default:"-" }}</td>
+                        <td>{{ item.record.quantity|default:"0" }}</td>
+                        <td>
+                            {% if item.record.service_images %}
+                                <a href="{{ item.record.service_images }}" target="_blank">
+                                    <i class="fas fa-images"></i>
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="truncate">{{ item.record.additional_notes|default:"-" }}</td>
                         <td>
                             <div class="btn-group">
-                                <a href="{% url 'service:record_detail' record.id %}" 
-                                   class="btn btn-sm btn-info">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{% url 'service:record_edit' record.id %}" 
-                                   class="btn btn-sm btn-warning">
+                                <a href="{% url 'service:record_edit' item.record.id %}" 
+                                class="btn btn-sm btn-warning">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <button type="button" 
-                                        class="btn btn-sm btn-danger"
-                                        onclick="confirmDelete('{% url 'service:record_delete' record.id %}')">
+                                <a href="{% url 'service:record_delete' item.record.id %}" 
+                                    class="btn btn-sm btn-danger" 
+                                    onclick="return confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')" title="ลบ">
                                     <i class="fas fa-trash"></i>
-                                </button>
+                                </a>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="11" class="text-center">ไม่พบข้อมูล</td>
+                        <td colspan="32" class="text-center">ไม่พบข้อมูล</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -150,10 +351,19 @@
         </div>
 
         <div class="mt-3">
-            <p>จำนวนรายการทั้งหมด: {{ records.count }}</p>
-            {% if debug %}
-            <pre>{{ records|pprint }}</pre>
-            {% endif %}
+            <p class="mb-0">
+                <strong>จำนวนรายการทั้งหมด:</strong> {{ total_records }} รายการ
+                <span class="mx-2">|</span>
+                <strong>หน้าปัจจุบัน:</strong> {{ current_page }}
+                <span class="mx-2">|</span>
+                <strong>แสดง:</strong> 
+                {% with start=start_index|add:1 %}
+                    {% with end=start_index|add:records.count %}
+                        {{ start }} - {{ end }}
+                    {% endwith %}
+                {% endwith %}
+                จาก {{ total_records }} รายการ
+            </p>
         </div>
 
         <!-- การแบ่งหน้า -->
