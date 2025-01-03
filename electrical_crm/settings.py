@@ -25,9 +25,9 @@ SECRET_KEY = 'django-insecure-gp3++ko3ommo5#s%&+*0+)e9rwb=2f8snztyikz9#n(qsvmq0v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['828a-49-0-80-224.ngrok-free.app', '127.0.0.1', 'localhost','192.168.2.188']
+ALLOWED_HOSTS = ['https://company-project-about-sakol-service.onrender.com/', '127.0.0.1', 'localhost','192.168.2.188']
 
-CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = ['https://company-project-about-sakol-service.onrender.com/']
 
 # เพิ่มการตั้งค่าสำหรับ Media files
 MEDIA_URL = '/media/'
