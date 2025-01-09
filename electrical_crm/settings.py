@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-gp3++ko3ommo5#s%&+*0+)e9rwb=2f8snztyikz9#n(qsvmq0v
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    '677f7c04114b6aa01721b150--aesthetic-truffle-c8eeb6.netlify.app',
+    'aesthetic-truffle-c8eeb6.netlify.app',
     '.ngrok-free.app',
     '127.0.0.1',
     'localhost',
