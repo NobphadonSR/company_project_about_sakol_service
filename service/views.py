@@ -162,7 +162,7 @@ class ServiceRequestDetailView(LoginRequiredMixin, DetailView):
             ).order_by('-created_at'),
             'service_images': ServiceImage.objects.filter(
                 service_request=self.object
-            ).order_by('-uploaded_at')  # เปลี่ยนจาก created_at เป็น uploaded_at
+            ).order_by('-uploaded_at')
         })
         return context
 
@@ -211,7 +211,7 @@ class DashboardView(LoginRequiredMixin, ServiceStaffRequired, TemplateView):
         # ใช้ Django ORM แทน raw SQL
         issues = ServiceRequest.objects.filter(
             created_at__gte=start_date
-        ).order_by('created_at')  # ยังคงใช้ order_by created_at
+        ).order_by('created_at')
 
         # จัดกลุ่มข้อมูลตามวันที่
         data_points = {}
@@ -603,7 +603,7 @@ class TechnicianDailySummaryView(LoginRequiredMixin, UserPassesTestMixin, Templa
             'total_revenue': total_revenue,
             'job_summary': job_summary,
             'job_timeline': job_timeline,
-            'is_service': self.request.user.user_type == 'service',  # เพิ่มตัวแปรสำหรับเช็คว่าเป็นฝ่ายบริการ
+            'is_service': self.request.user.user_type == 'service',
             'job_timeline': job_timeline,
         })
         return context
@@ -636,7 +636,7 @@ def submit_technician_advice(request, request_id):
         if advice and estimated_cost:
             service_request.technician_advice = advice
             service_request.estimated_cost = estimated_cost
-            service_request.status = 'advice_given'  # เปลี่ยนสถานะเป็นให้คำปรึกษาแล้ว
+            service_request.status = 'advice_given'
             service_request.save()
             
             return JsonResponse({
@@ -706,11 +706,12 @@ def submit_service_recommendation(request, service_id):
     )
 
     # ตรวจสอบว่าผู้ใช้เป็นช่างที่ได้รับมอบหมายงานนี้
-    if not request.user.is_authenticated or request.user.user_type != 'technician':
+    if not request.user.is_authenticated or request.user.user_type not in ['technician', 'service']:
         messages.error(request, 'ไม่มีสิทธิ์เข้าถึงหน้านี้')
         return redirect('service:request_list')
 
-    if service_request.technician != request.user:
+    # ถ้าเป็นช่าง ต้องตรวจสอบว่าเป็นช่างที่ได้รับมอบหมายงานนี้
+    if request.user.user_type == 'technician' and service_request.technician != request.user:
         messages.error(request, 'คุณไม่ได้รับมอบหมายงานนี้')
         return redirect('service:request_list')
 
@@ -953,11 +954,12 @@ def submit_service_recommendation(request, service_id):
 # อัพเดทสถานะงานของช่าง
 @login_required
 def update_job_status(request, service_id):
-    if request.method == 'POST' and request.user.user_type == 'technician':
+    if request.method == 'POST' and request.user.user_type == 'technician' and request.user.user_type == 'service':
         service_request = get_object_or_404(ServiceRequest, id=service_id)
         status = TechnicianJobStatus.objects.create(
             service_request=service_request,
             technician=request.user,
+            service=request.user,
             status=request.POST.get('status')
         )
         
@@ -1034,7 +1036,7 @@ def update_service_status(request, service_id):
 
                     # ตรวจสอบลำดับการอัพเดทสถานะ
                     status_flow = {
-                        'confirmed': ['confirmed'],
+                        'confirmed': ['assigned'],
                         'assigned': ['accepted'],
                         'accepted': ['traveling'],
                         'traveling': ['arrived'],
@@ -1288,6 +1290,89 @@ class ServiceRequestManageView(LoginRequiredMixin, StaffRequired, ListView):
             return queryset.filter(technician=self.request.user)
         # ฝ่ายบริการเห็นทุกงาน
         return queryset.all()
+
+# ส่งออกข้อมูลงาน excel สำหรับฝ่ายบริการ
+@login_required
+def export_service_requests(request):
+    """ส่งออกข้อมูลการแจ้งซ่อมเป็นไฟล์ Excel"""
+    if request.user.user_type not in ['service', 'technician']:
+        return HttpResponseForbidden("ไม่มีสิทธิ์เข้าถึง")
+
+    # สร้าง Workbook ใหม่
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Service Requests"
+
+    # กำหนดหัวคอลัมน์
+    headers = [
+        'เลขที่คำขอ',
+        'วันที่แจ้ง',
+        'วันที่นัดหมาย',
+        'เวลานัดหมาย',
+        'ลูกค้า',
+        'โครงการ',
+        'บ้านเลขที่',
+        'เบอร์โทร',
+        'ประเภทงาน',
+        'รายละเอียด',
+        'ช่างผู้รับผิดชอบ',
+        'สถานะ',
+        'สถานะประกัน',
+        'ค่าใช้จ่าย',
+        'หมายเหตุค่าใช้จ่าย'
+    ]
+    ws.append(headers)
+
+    # ดึงข้อมูลตามสิทธิ์การเข้าถึง
+    if request.user.user_type == 'technician':
+        queryset = ServiceRequest.objects.filter(technician=request.user).order_by('id')
+    else:
+        queryset = ServiceRequest.objects.all().order_by('id')
+
+    # เพิ่มข้อมูลลงในไฟล์ Excel
+    for service_request in queryset.select_related('customer', 'technician'):
+        row = [
+            service_request.id,
+            service_request.created_at.strftime('%d/%m/%Y'),
+            service_request.appointment_date.strftime('%d/%m/%Y') if service_request.appointment_date else '',
+            service_request.appointment_time.strftime('%H:%M') if service_request.appointment_time else '',
+            service_request.customer.customer_name,
+            service_request.customer.project_name,
+            service_request.customer.house_number,
+            service_request.customer.phone,
+            service_request.get_request_type_display(),
+            service_request.description,
+            service_request.technician.customer.customer_name if service_request.technician else '',
+            service_request.get_status_display(),
+            service_request.get_warranty_status_display(),
+            str(service_request.estimated_cost) if service_request.estimated_cost else '0',
+            service_request.cost_note or ''
+        ]
+        ws.append(row)
+
+    # ปรับความกว้างคอลัมน์อัตโนมัติ
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column_letter].width = adjusted_width
+
+    # สร้าง response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=service_requests.xlsx'
+
+    # บันทึกไฟล์
+    wb.save(response)
+    return response
+
 
 # อัพเดทสถานะงานของฝ่ายบริการ
 class UpdateServiceStatusView(LoginRequiredMixin, StaffRequired, UpdateView):

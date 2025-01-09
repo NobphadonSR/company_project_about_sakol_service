@@ -4,7 +4,8 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
+.env
+env
 build/
 develop-eggs/
 dist/
@@ -28,9 +29,7 @@ db.sqlite3-journal
 media/
 staticfiles/
 
-# Virtual Environment
-venv/
-ENV/
+
 
 # IDE
 .idea/
@@ -41,3 +40,5 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+.codegpt

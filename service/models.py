@@ -16,6 +16,7 @@ class ServiceRequest(models.Model):
         ('assigned', 'มอบหมายงานแล้ว'),
         ('pending_advice', 'รอคำปรึกษาจากช่าง'),
         ('advice_given', 'ให้คำปรึกษาแล้ว'),
+        ('confirmed', 'ยืนยันการแจ้งซ่อม'),
         ('accepted', 'รับงาน'),
         ('traveling', 'กำลังเดินทาง'),
         ('arrived', 'ถึงจุดหมาย'),
@@ -129,19 +130,75 @@ class ServiceRequest(models.Model):
         """ตรวจสอบสถานะประกันอัตโนมัติ"""
         today = timezone.now().date()
         
+        # แปลงค่าสถานะประกันระหว่าง Customer และ ServiceRequest
+        warranty_status_mapping = {
+            'ACTIVE': 'in_warranty',
+            'EXPIRED': 'out_of_warranty',
+            'NONE': 'pending_warranty'
+        }
+        
         # ตรวจสอบสถานะประกันจาก Customer
         customer = self.customer
-        if customer.warranty_status == 'ACTIVE':
-            self.warranty_status = 'in_warranty'
-        elif customer.warranty_status == 'EXPIRED':
-            self.warranty_status = 'out_of_warranty'
-        else:
-            self.warranty_status = 'pending_warranty'
+        self.warranty_status = warranty_status_mapping.get(
+            customer.warranty_status, 
+            'pending_warranty'
+        )
         
         # อัพเดทวันที่ประกัน
-        self.warranty_start_date = today
-        self.warranty_end_date = customer.warranty_expiry_date
-        self.save()
+        if customer.warranty_status == 'ACTIVE':
+            self.warranty_start_date = today
+            self.warranty_end_date = customer.warranty_expiry_date
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        
+        # คำนวณราคาอัตโนมัติ
+        if self.service_category:
+            self.calculated_price = self.calculate_service_fee()
+        
+        # ตรวจสอบการซื้ออะไหล่ใหม่
+        if self.request_type in ['install', 'all_in'] and (is_new or not self.warranty_start_date):
+            today = timezone.now().date()
+            self.warranty_start_date = today
+            self.warranty_end_date = today + timedelta(days=365)
+            self.warranty_status = 'in_warranty'
+            
+            # อัพเดทข้อมูลลูกค้า
+            if self.customer:
+                self.customer.warranty_status = 'ACTIVE'
+                self.customer.warranty_expiry_date = self.warranty_end_date
+                self.customer.save(update_fields=['warranty_status', 'warranty_expiry_date'])
+        
+        # ตรวจสอบสถานะประกัน
+        self.check_warranty_status()
+        
+        # ตรวจสอบการนัดหมาย
+        if self.appointment_date and self.appointment_time:
+            if self.check_appointment_conflict(self.appointment_date, self.appointment_time):
+                raise ValidationError('มีการนัดหมายซ้ำซ้อนกับช่างท่านนี้')
+            
+            if not self.is_within_service_hours(self.appointment_time):
+                raise ValidationError('เวลานัดหมายต้องอยู่ในช่วง 8:00-17:00 น.')
+
+        super().save(*args, **kwargs)
+
+    def set_warranty(self, start_date=None):
+        """ตั้งค่าประกัน 1 ปี"""
+        if start_date is None:
+            start_date = timezone.now().date()
+        
+        # อัพเดทข้อมูลการรับประกัน
+        self.warranty_start_date = start_date
+        self.warranty_end_date = start_date + timedelta(days=365)
+        self.warranty_status = 'in_warranty'
+        
+        # อัพเดทข้อมูลลูกค้าด้วย
+        if self.customer:
+            self.customer.warranty_status = 'ACTIVE'
+            self.customer.warranty_expiry_date = self.warranty_end_date
+            self.customer.save(update_fields=['warranty_status', 'warranty_expiry_date'])
+        
+        self.save(update_fields=['warranty_start_date', 'warranty_end_date', 'warranty_status'])
 
     @property
     def remaining_warranty_days(self):
@@ -196,47 +253,6 @@ class ServiceRequest(models.Model):
         service_end = time.replace(hour=17, minute=0)
         
         return service_start <= time <= service_end
-
-    # แก้ไขเมธอด save() เดิม
-    def save(self, *args, **kwargs):
-        # คำนวณราคาอัตโนมัติเมื่อมีการบันทึก
-        if self.service_category:
-            self.calculated_price = self.calculate_service_fee()
-        
-        # ตรวจสอบว่าเป็นการซื้ออะไหล่ใหม่หรือไม่
-        if self.request_type in ['install', 'all_in'] and not self.warranty_start_date:
-            self.warranty_start_date = timezone.now().date()
-            self.warranty_end_date = self.warranty_start_date + timedelta(days=365)
-            self.warranty_status = 'in_warranty'
-            
-            # อัพเดทสถานะประกันของลูกค้า
-            self.customer.warranty_status = 'ACTIVE'
-            self.customer.warranty_expiry_date = self.warranty_end_date
-            self.customer.save()
-        
-        # ตรวจสอบสถานะประกัน
-        self.check_warranty_status()
-        
-        # ตรวจสอบการนัดหมาย
-        if self.appointment_date and self.appointment_time:
-            if self.check_appointment_conflict(self.appointment_date, self.appointment_time):
-                raise ValidationError('มีการนัดหมายซ้ำซ้อนกับช่างท่านนี้')
-            
-            # ตรวจสอบเวลาทำการ
-            if not self.is_within_service_hours(self.appointment_time):
-                raise ValidationError('เวลานัดหมายต้องอยู่ในช่วง 8:00-17:00 น.')
-
-        super().save(*args, **kwargs)
-
-    def set_warranty(self, start_date=None):
-        """ตั้งค่าประกัน 1 ปี"""
-        if start_date is None:
-            start_date = timezone.now().date()
-        
-        self.warranty_start_date = start_date
-        self.warranty_end_date = start_date + timedelta(days=365)
-        self.warranty_status = 'in_warranty'
-        self.save()
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'การแจ้งซ่อม'
@@ -362,6 +378,7 @@ class TechnicianProposal(models.Model):
 
 class TechnicianJobStatus(models.Model):
     TECHNICIAN_STATUS_CHOICES = [
+        ('confirmed', 'ยืนยันการแจ้งซ่อม'),
         ('accepted', 'รับงาน'),
         ('traveling', 'กำลังเดินทาง'),
         ('arrived', 'ถึงจุดหมาย'),

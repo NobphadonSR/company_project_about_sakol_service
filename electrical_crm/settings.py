@@ -25,9 +25,17 @@ SECRET_KEY = 'django-insecure-gp3++ko3ommo5#s%&+*0+)e9rwb=2f8snztyikz9#n(qsvmq0v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://company-project-about-sakol-service.onrender.com/', '127.0.0.1', 'localhost','192.168.2.188']
+ALLOWED_HOSTS = [
+    '677f7c04114b6aa01721b150--aesthetic-truffle-c8eeb6.netlify.app',
+    '.ngrok-free.app',
+    '127.0.0.1',
+    'localhost',
+    '192.168.2.188'
+]
 
-CSRF_TRUSTED_ORIGINS = ['https://company-project-about-sakol-service.onrender.com/']
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.ngrok-free.app'
+]
 
 # เพิ่มการตั้งค่าสำหรับ Media files
 MEDIA_URL = '/media/'
@@ -155,7 +163,7 @@ FILE_UPLOAD_HANDLERS = [
     'django.core.files.uploadhandler.MemoryFileUploadHandler',
     'django.core.files.uploadhandler.TemporaryFileUploadHandler',
 ]
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 6242880  # 6MB
 
 # ตั้งค่าความปลอดภัย
 SECURE_BROWSER_XSS_FILTER = True
@@ -169,6 +177,3 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-GOOGLE_MAPS_API_KEY = 'AIzaSyABIK__LIZG8Mpx7TUERa8SrIyAvfI5Qqs'

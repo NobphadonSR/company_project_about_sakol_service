@@ -242,7 +242,7 @@
         {% endif %}
 
         <!-- ส่วนสำหรับช่างอัพเดทสถานะ -->
-        {% if user.user_type == 'technician' and request.technician == user %}
+        {% if user.user_type == 'technician' or user.user_type == 'service' %}
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0">การดำเนินการ</h5>
@@ -484,7 +484,6 @@
         </script>
         {% endif %}-->
 
-        <!-- 1. เพิ่มส่วนแสดงคำแนะนำจากช่างและการยืนยัน -->
         <!-- 1. เพิ่มส่วนแสดงคำแนะนำจากช่างและการยืนยัน -->
             {% if request.need_advice %}
             <div class="card mb-4">
@@ -838,12 +837,35 @@ function confirmServiceRequest(requestId) {
 }
 
 // ฟังก์ชันสำหรับช่างอัพเดทสถานะ
-function updateServiceStatus(serviceId, status) {
+// แก้ไขฟังก์ชัน updateServiceStatus
+function updateServiceStatus(serviceId, status, technicianId) {
     if (!confirm('ยืนยันการอัพเดทสถานะ?')) return;
 
     const formData = new FormData();
     formData.append('status', status);
-    
+    formData.append('action', 'update_status');
+    formData.append('technician', technicianId);
+
+    // ถ้ามีการอัพโหลดรูปภาพ
+    const photoInput = document.getElementById('service-images');
+    if (photoInput && photoInput.files.length > 0) {
+        // ตรวจสอบจำนวนรูปภาพ
+        if (photoInput.files.length > 6) {
+            alert('ไม่สามารถอัพโหลดรูปภาพเกิน 6 รูปได้');
+            return;
+        }
+        
+        for (let i = 0; i < photoInput.files.length; i++) {
+            formData.append('photos', photoInput.files[i]);
+        }
+    }
+
+    // เพิ่มคำอธิบายรูปภาพและหมายเหตุ (ถ้ามี)
+    const imageDesc = document.getElementById('image-description');
+    const statusNotes = document.getElementById('status-notes');
+    if (imageDesc) formData.append('image_description', imageDesc.value);
+    if (statusNotes) formData.append('notes', statusNotes.value);
+
     fetch(`/service/request/${serviceId}/update-status/`, {
         method: 'POST',
         body: formData,
@@ -851,18 +873,30 @@ function updateServiceStatus(serviceId, status) {
             'X-CSRFToken': getCookie('csrftoken')
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('ไม่มีสิทธิ์ในการอัพเดทสถานะ');
+            } else if (response.status === 400) {
+                return response.json().then(data => {
+                    throw new Error(data.message || 'เกิดข้อผิดพลาดในการอัพเดทสถานะ');
+                });
+            }
+            throw new Error('การเชื่อมต่อเครือข่ายมีปัญหา');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.status === 'success') {
             alert('อัพเดทสถานะเรียบร้อย');
-            location.reload();
+            window.location.reload();
         } else {
-            alert(data.message);
+            alert(data.message || 'เกิดข้อผิดพลาดในการอัพเดทสถานะ');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+        alert('เกิดข้อผิดพลาด: ' + error.message);
     });
 }
 

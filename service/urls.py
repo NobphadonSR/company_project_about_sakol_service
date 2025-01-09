@@ -43,6 +43,9 @@ urlpatterns = [
     path('image/<int:image_id>/delete/', views.delete_service_image, name='delete_service_image'),
 
     path('manage/', views.ServiceRequestManageView.as_view(), name='manage_requests'),
+    # เพิ่ม URL สำหรับการส่งออก Excel
+    path('manage/export/', views.export_service_requests, name='export_service_requests'),
+    
     path('update-status/<int:pk>/', views.UpdateServiceStatusView.as_view(), name='update_status'),
     path('customer-map/', views.CustomerMapView.as_view(), name='customer_map'),
     path('request/<int:pk>/warranty/', views.manage_warranty, name='manage_warranty'),
