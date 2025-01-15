@@ -1,4 +1,4 @@
-# sakol_service_crm_projects
+# ระบบจัดการการแก้ปัญหาจากลูกค้า
 
 ระบบจัดการงานบริการและซ่อมบำรุงอุปกรณ์ไฟฟ้า สำหรับบริษัทรับเหมาติดตั้งและซ่อมบำรุงระบบไฟฟ้า
 
@@ -23,28 +23,44 @@
 ## การติดตั้ง
 
 1. สร้าง Virtual Environment:
-    `python -m venv venv`
-    `source venv/bin/activate # สำหรับ Linux/Mac`
-    `venv\Scripts\activate # สำหรับ Windows`
+    ```bash
+    python -m venv venv
+    ```
+    ```bash
+    source venv/bin/activate
+    ```
+    ```bash
+    venv\Scripts\activate
+    ```
 
 2. ติดตั้ง Dependencies:
-    `pip install -r requirements.txt`
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 3. ตั้งค่าฐานข้อมูล PostgreSQL:
-    `createdb electrical_crm_db`
+    ```bash
+    createdb electrical_crm_db
+    ```
 
 4. ทำการ Migrate ฐานข้อมูล:
-    `python manage.py migrate`
+    ```bash
+    python manage.py migrate
+    ```
 
 5. สร้าง Superuser:
-    `python manage.py createsuperuser`
+    ```bash
+    python manage.py createsuperuser
+    ```
 
 6. รัน Development Server:
-    `python manage.py runserver`
+    ```bash
+    python manage.py runserver
+    ```
 
 ## โครงสร้างโปรเจกต์
 
-electrical_crm/
+- electrical_crm/
 - accounts/
 - service/
 - static/
