@@ -45,12 +45,12 @@
 ## โครงสร้างโปรเจกต์
 
 electrical_crm/
-├── accounts/
-├── service/
-├── static/
-├── media/
-├── templates/
-├── electrical_crm/
+    - accounts/
+    - service/
+    - static/
+    - media/
+    - templates/
+    - electrical_crm/
 
 ## การตั้งค่าสำคัญ
 
@@ -58,7 +58,7 @@ electrical_crm/
 - **Timezone:** Asia/Bangkok
 - **Static Files:** /static/
 - **Media Files:** /media/
-- **File Upload Limit:** 5MB
+- **File Upload Limit:** 6MB
 
 ## ความปลอดภัย
 
@@ -67,10 +67,6 @@ electrical_crm/
 - Content Type Nosniff
 - X-Frame-Options
 - Secure File Upload Handling
-
-## API ที่ใช้
-
-- Google Maps API สำหรับแสดงตำแหน่งที่ตั้ง
 
 ## การพัฒนาต่อ
 
