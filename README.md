@@ -45,12 +45,12 @@
 ## โครงสร้างโปรเจกต์
 
 electrical_crm/
-    - accounts/
-    - service/
-    - static/
-    - media/
-    - templates/
-    - electrical_crm/
+- accounts/
+- service/
+- static/
+- media/
+- templates/
+- electrical_crm/
 
 ## การตั้งค่าสำคัญ
 
