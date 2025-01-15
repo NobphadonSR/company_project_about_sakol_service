@@ -44,13 +44,13 @@
 
 ## โครงสร้างโปรเจกต์
 
-`electrical_crm/`
-├── accounts/            # แอพจัดการผู้ใช้งาน
-├── service/            # แอพจัดการงานบริการ
-├── static/            # ไฟล์ static (CSS, JS, Images)
-├── media/             # ไฟล์ที่ผู้ใช้อัพโหลด
-├── templates/         # เทมเพลตหลัก
-├── electrical_crm/    # การตั้งค่าหลักของโปรเจกต์
+electrical_crm/
+├── accounts/
+├── service/
+├── static/
+├── media/
+├── templates/
+├── electrical_crm/
 
 ## การตั้งค่าสำคัญ
 

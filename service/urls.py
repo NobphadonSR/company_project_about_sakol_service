@@ -3,7 +3,7 @@ from . import views
 from django.conf import settings
 from django.conf.urls.static import static
 
-app_name = 'service'  # เพิ่มบรรทัดนี้
+app_name = 'service'
 
 urlpatterns = [
     # URLs สำหรับลูกค้า
@@ -30,7 +30,6 @@ urlpatterns = [
     path('update-job-status/<int:service_id>/', views.update_job_status, name='update_job_status'),
     path('generate-bill/<int:service_id>/', views.generate_bill, name='generate_bill'),
     path('request/<int:request_id>/customer-confirm/', views.confirm_customer_request, name='customer_confirm_request'),
-    # เพิ่ม URL สำหรับจัดการค่าใช้จ่าย
     path('request/<int:request_id>/set-cost/', views.set_service_cost, name='set_service_cost'),
 
     # URLs สำหรับช่าง
@@ -42,14 +41,12 @@ urlpatterns = [
     path('request/<int:service_id>/update-status/', views.update_service_status, name='update_service_status'),
     path('image/<int:image_id>/delete/', views.delete_service_image, name='delete_service_image'),
 
+    # URLs ฟีเจอร์สำหรับฝ่ายบริการ
     path('manage/', views.ServiceRequestManageView.as_view(), name='manage_requests'),
-    # เพิ่ม URL สำหรับการส่งออก Excel
     path('manage/export/', views.export_service_requests, name='export_service_requests'),
-    
     path('update-status/<int:pk>/', views.UpdateServiceStatusView.as_view(), name='update_status'),
     path('customer-map/', views.CustomerMapView.as_view(), name='customer_map'),
     path('request/<int:pk>/warranty/', views.manage_warranty, name='manage_warranty'),
-    # เพิ่ม URL patterns
     path('upload-excel/', views.upload_excel, name='upload_excel'),
     path('download-template/', views.download_template, name='download_template'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -47,7 +47,7 @@ class HomeView(TemplateView):
 def assign_technician(request, pk):
     if request.method == 'POST' and request.user.user_type == 'service':
         service_request = get_object_or_404(ServiceRequest, pk=pk)
-        technician_id = request.POST.get('technician')  # ใช้ชื่อ field จากฟอร์ม
+        technician_id = request.POST.get('technician')
         
         if technician_id:
             try:
@@ -489,6 +489,7 @@ class TechnicianCalendarView(LoginRequiredMixin, TechnicianRequired, TemplateVie
                     
                     if appointment.appointment_time:
                         event['start'] = f"{appointment.appointment_date.isoformat()}T{appointment.appointment_time.strftime('%H:%M:%S')}"
+                    
                     
                     events.append(event)
                 
